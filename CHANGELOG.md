@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+Torrents carry tags, so a surface that announces a finished download can keep its note on the
+torrent rather than in its own memory, and survive a restart mid-download.
+
 ## 0.3.0
 
 Downloading: the torrent client over its Web API, the acquisition path from a chosen release to a

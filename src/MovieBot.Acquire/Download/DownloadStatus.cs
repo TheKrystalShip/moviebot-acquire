@@ -61,6 +61,16 @@ public sealed record DownloadStatus
     /// <summary>Whether the client is fetching pieces in order, which is what makes a partial file playable.</summary>
     public bool IsSequential { get; init; }
 
+    /// <summary>
+    /// Notes carried on the torrent itself rather than by whoever started it.
+    ///
+    /// A surface that wants to say something when a download finishes has to remember where to
+    /// say it, and remembering it in the process that started the download loses it on a restart
+    /// — which is exactly when a long download is still running. The torrent client already
+    /// persists the torrent, so the note rides along with it.
+    /// </summary>
+    public IReadOnlyList<string> Tags { get; init; } = [];
+
     public bool IsFinished => State == DownloadState.Complete;
 
     /// <summary>A short line for a chat surface.</summary>

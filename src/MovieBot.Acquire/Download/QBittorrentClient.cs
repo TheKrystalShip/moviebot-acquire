@@ -41,7 +41,8 @@ public sealed class QBittorrentClient(
     /// endpoint answers "Ok." and does not say what it added. Adding a torrent already present
     /// is not an error and returns the same hash, so a repeated request is harmless.
     /// </summary>
-    public async Task<string> AddAsync(byte[] torrentFile, string savePath, CancellationToken ct)
+    public async Task<string> AddAsync(
+        byte[] torrentFile, string savePath, IEnumerable<string>? tags, CancellationToken ct)
     {
         var hash = Bencode.InfoHash(torrentFile);
 
@@ -56,6 +57,11 @@ public sealed class QBittorrentClient(
         form.Add(new StringContent(_options.Category), "category");
         form.Add(new StringContent(Spell(_options.SequentialDownload)), "sequentialDownload");
         form.Add(new StringContent(Spell(_options.FirstLastPiecePriority)), "firstLastPiecePrio");
+
+        // The client separates tags by comma, so a tag may not contain one.
+        var tagList = (tags ?? []).Select(t => t.Replace(',', ' ')).ToList();
+        if (tagList.Count > 0)
+            form.Add(new StringContent(string.Join(',', tagList)), "tags");
 
         try
         {
@@ -73,6 +79,34 @@ public sealed class QBittorrentClient(
 
             logger.LogInformation("Added {Hash} to the torrent client.", hash);
             return hash;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
+                                   && !ct.IsCancellationRequested)
+        {
+            throw new QBittorrentException("The torrent client could not be reached.", ex);
+        }
+    }
+
+    /// <summary>
+    /// Removes one tag from a torrent. Used to mark a note as acted on, so the same download is
+    /// not announced twice.
+    /// </summary>
+    public async Task RemoveTagAsync(string hash, string tag, CancellationToken ct)
+    {
+        await EnsureSignedInAsync(ct);
+
+        var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["hashes"] = hash,
+            ["tags"] = tag,
+        });
+
+        try
+        {
+            using var response = await http.PostAsync("api/v2/torrents/removeTags", form, ct);
+            if (!response.IsSuccessStatusCode)
+                throw new QBittorrentException(
+                    $"The torrent client answered {(int)response.StatusCode} removing a tag.");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
                                    && !ct.IsCancellationRequested)
@@ -132,6 +166,8 @@ public sealed class QBittorrentClient(
         Remaining = ReadEta(torrent.Eta),
         ContentPath = torrent.ContentPath,
         IsSequential = torrent.SequentialDownload,
+        Tags = torrent.Tags
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
     };
 
     /// <summary>

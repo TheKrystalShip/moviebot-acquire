@@ -5,7 +5,6 @@ using Microsoft.Extensions.Logging;
 using TheKrystalShip.MovieBot.Acquire;
 using TheKrystalShip.MovieBot.Acquire.Download;
 using TheKrystalShip.MovieBot.Acquire.Tracker;
-using TheKrystalShip.MovieBot.Acquire.Download;
 using TheKrystalShip.MovieBot.Acquire.Search;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -155,7 +154,7 @@ async Task<int> GetAsync(string[] rest)
     Console.WriteLine($"  {release.Summary}");
 
     var result = await services.GetRequiredService<AcquisitionService>()
-        .StartAsync(release, cancellation.Token);
+        .StartAsync(release, null, cancellation.Token);
 
     if (!result.Started)
     {

@@ -42,6 +42,9 @@ public sealed record QBittorrentTorrent
     [JsonPropertyName("seq_dl")] public bool SequentialDownload { get; init; }
 
     [JsonPropertyName("ratio")] public double Ratio { get; init; }
+
+    /// <summary>The client's own comma-separated tag list, which is where this keeps its notes.</summary>
+    [JsonPropertyName("tags")] public string Tags { get; init; } = "";
 }
 
 [JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]

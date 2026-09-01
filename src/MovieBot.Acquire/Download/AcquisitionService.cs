@@ -37,7 +37,12 @@ public sealed class AcquisitionService(
 {
     private readonly DownloadOptions _download = download.Value;
 
-    public async Task<AcquisitionResult> StartAsync(Release release, CancellationToken ct)
+    /// <param name="tags">
+    /// Notes to carry on the torrent itself, so a surface that wants to announce the download
+    /// later does not have to remember it across its own restarts.
+    /// </param>
+    public async Task<AcquisitionResult> StartAsync(
+        Release release, IEnumerable<string>? tags, CancellationToken ct)
     {
         var verdict = budget.CanAccept(release.SizeBytes);
         if (!verdict.Allowed)
@@ -64,7 +69,7 @@ public sealed class AcquisitionService(
 
         try
         {
-            var hash = await torrents.AddAsync(torrentFile, _download.ResolveRoot(), ct);
+            var hash = await torrents.AddAsync(torrentFile, _download.ResolveRoot(), tags, ct);
 
             logger.LogInformation(
                 "Started {Release} ({Size}) as {Hash}. {Budget}",
@@ -78,6 +83,10 @@ public sealed class AcquisitionService(
             return AcquisitionResult.Refused("The torrent client would not take it.");
         }
     }
+
+    /// <summary>Marks a note on a torrent as acted on, so it is not acted on twice.</summary>
+    public Task ClearTagAsync(string hash, string tag, CancellationToken ct) =>
+        torrents.RemoveTagAsync(hash, tag, ct);
 
     /// <summary>One download, or null when this process never started it.</summary>
     public Task<DownloadStatus?> StatusAsync(string hash, CancellationToken ct) =>
