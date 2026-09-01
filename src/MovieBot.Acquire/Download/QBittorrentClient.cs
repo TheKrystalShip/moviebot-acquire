@@ -87,11 +87,18 @@ public sealed class QBittorrentClient(
         }
     }
 
+    /// <summary>Adds one tag to a torrent, so a later pass can see what happened on this one.</summary>
+    public Task AddTagAsync(string hash, string tag, CancellationToken ct) =>
+        ChangeTagsAsync("api/v2/torrents/addTags", hash, tag, ct);
+
     /// <summary>
     /// Removes one tag from a torrent. Used to mark a note as acted on, so the same download is
     /// not announced twice.
     /// </summary>
-    public async Task RemoveTagAsync(string hash, string tag, CancellationToken ct)
+    public Task RemoveTagAsync(string hash, string tag, CancellationToken ct) =>
+        ChangeTagsAsync("api/v2/torrents/removeTags", hash, tag, ct);
+
+    private async Task ChangeTagsAsync(string endpoint, string hash, string tag, CancellationToken ct)
     {
         await EnsureSignedInAsync(ct);
 
@@ -103,10 +110,10 @@ public sealed class QBittorrentClient(
 
         try
         {
-            using var response = await http.PostAsync("api/v2/torrents/removeTags", form, ct);
+            using var response = await http.PostAsync(endpoint, form, ct);
             if (!response.IsSuccessStatusCode)
                 throw new QBittorrentException(
-                    $"The torrent client answered {(int)response.StatusCode} removing a tag.");
+                    $"The torrent client answered {(int)response.StatusCode} changing a tag.");
         }
         catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
                                    && !ct.IsCancellationRequested)

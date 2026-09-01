@@ -107,6 +107,19 @@ These are measured against what the tracker actually returns. Changing one means
 - **Disk is checked before the tracker is asked, and the torrent fetched before the client is
   asked to take it.** Each ordering exists so a refusal costs nothing and leaves nothing behind.
 
+## Tags
+
+More than one process acts on a download: one starts it, another turns it into something
+watchable, a third announces it. A download outlives all of them, and the torrent client already
+persists it, so the state of that work is kept on the torrent rather than in any of them.
+
+- **The vocabulary is `TorrentTags`, and nowhere else.** Two processes spelling the same idea
+  differently does not throw: the tag is never seen and the work silently never happens.
+- **A tag is cleared by whoever acted on it**, which is what stops the same work being done on
+  every pass.
+- **A failure gets its own tag rather than leaving the work tag alone.** Left alone, a failure is
+  indistinguishable from work still in progress, and whoever is waiting is told nothing at all.
+
 ## Conventions
 
 - C# namespaces are `TheKrystalShip.MovieBot.Acquire.*`, matching the GitHub org this publishes

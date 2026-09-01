@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.0
+
+The tag vocabulary processes use to leave notes on a torrent for each other, and the ability to
+add one as well as remove it.
+
+It lives in this library because more than one process acts on the same download, and two of them
+spelling the same idea differently fails silently: nothing throws, the tag is simply never seen
+and the work never happens.
+
 ## 0.4.0
 
 Torrents carry tags, so a surface that announces a finished download can keep its note on the

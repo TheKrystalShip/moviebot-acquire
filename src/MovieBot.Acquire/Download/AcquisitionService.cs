@@ -88,6 +88,10 @@ public sealed class AcquisitionService(
     public Task ClearTagAsync(string hash, string tag, CancellationToken ct) =>
         torrents.RemoveTagAsync(hash, tag, ct);
 
+    /// <summary>Leaves a note on a torrent for a later pass, or for another process entirely.</summary>
+    public Task TagAsync(string hash, string tag, CancellationToken ct) =>
+        torrents.AddTagAsync(hash, tag, ct);
+
     /// <summary>One download, or null when this process never started it.</summary>
     public Task<DownloadStatus?> StatusAsync(string hash, CancellationToken ct) =>
         torrents.GetAsync(hash, ct);
