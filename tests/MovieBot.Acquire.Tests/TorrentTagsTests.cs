@@ -1,0 +1,43 @@
+using TheKrystalShip.MovieBot.Acquire.Download;
+using Xunit;
+
+namespace TheKrystalShip.MovieBot.Acquire.Tests;
+
+/// <summary>
+/// Two of these tags are a prefix and a number, and reading one as the other would send a film's
+/// announcement to a person's id as though it were a channel, or ping a channel id as though it
+/// were a person. Neither throws.
+/// </summary>
+public class TorrentTagsTests
+{
+    [Fact]
+    public void A_channel_survives_the_round_trip() =>
+        Assert.Equal(385731869163126784UL,
+            TorrentTags.ReadNotifyChannel(TorrentTags.Notify(385731869163126784UL)));
+
+    [Fact]
+    public void A_requester_survives_the_round_trip() =>
+        Assert.Equal(214987225747587072UL,
+            TorrentTags.ReadRequester(TorrentTags.Requester(214987225747587072UL)));
+
+    [Fact]
+    public void A_requester_tag_is_not_read_as_a_channel() =>
+        Assert.Null(TorrentTags.ReadNotifyChannel(TorrentTags.Requester(1234567890UL)));
+
+    [Fact]
+    public void A_channel_tag_is_not_read_as_a_requester() =>
+        Assert.Null(TorrentTags.ReadRequester(TorrentTags.Notify(1234567890UL)));
+
+    [Theory]
+    [InlineData("ingest")]
+    [InlineData("ingest-failed")]
+    [InlineData("notify:")]
+    [InlineData("requester:")]
+    [InlineData("notify:not-a-number")]
+    [InlineData("")]
+    public void Anything_else_reads_as_nothing(string tag)
+    {
+        Assert.Null(TorrentTags.ReadNotifyChannel(tag));
+        Assert.Null(TorrentTags.ReadRequester(tag));
+    }
+}

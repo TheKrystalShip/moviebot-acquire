@@ -30,6 +30,21 @@ public static class TorrentTags
             : null;
 
     /// <summary>
+    /// Who asked for the film, so they can be told when it arrives. The account id follows the
+    /// colon.
+    /// </summary>
+    public const string RequesterPrefix = "requester:";
+
+    public static string Requester(ulong accountId) => $"{RequesterPrefix}{accountId}";
+
+    /// <summary>Reads the account out of a requester tag, or null when it is not one.</summary>
+    public static ulong? ReadRequester(string tag) =>
+        tag.StartsWith(RequesterPrefix, StringComparison.Ordinal)
+        && ulong.TryParse(tag[RequesterPrefix.Length..], out var accountId)
+            ? accountId
+            : null;
+
+    /// <summary>
     /// The download still has to be turned into something the player can open. Carried from the
     /// moment it is started and removed once that work is finished, so a complete download still
     /// wearing it is one nobody can watch yet.
