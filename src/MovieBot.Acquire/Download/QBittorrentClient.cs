@@ -259,6 +259,7 @@ public sealed class QBittorrentClient(
         Remaining = ReadEta(torrent.Eta),
         ContentPath = torrent.ContentPath,
         IsSequential = torrent.SequentialDownload,
+        Seeds = torrent.Seeds,
         Tags = torrent.Tags
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
     };

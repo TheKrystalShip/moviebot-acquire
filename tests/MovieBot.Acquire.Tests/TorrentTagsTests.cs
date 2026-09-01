@@ -28,6 +28,34 @@ public class TorrentTagsTests
     public void A_channel_tag_is_not_read_as_a_requester() =>
         Assert.Null(TorrentTags.ReadRequester(TorrentTags.Notify(1234567890UL)));
 
+    [Fact]
+    public void A_progress_message_survives_the_round_trip()
+    {
+        var tag = TorrentTags.Progress(385731869163126784UL, 1122334455667788990UL);
+
+        Assert.Equal((385731869163126784UL, 1122334455667788990UL), TorrentTags.ReadProgress(tag));
+    }
+
+    [Fact]
+    public void A_progress_tag_keeps_the_channel_and_the_message_the_right_way_round()
+    {
+        // Two ids of the same shape in one tag. Swapped, every edit would be attempted against a
+        // channel that is really a message and simply never appear.
+        var read = TorrentTags.ReadProgress(TorrentTags.Progress(111UL, 222UL));
+
+        Assert.Equal(111UL, read!.Value.ChannelId);
+        Assert.Equal(222UL, read.Value.MessageId);
+    }
+
+    [Theory]
+    [InlineData("progress:123")]
+    [InlineData("progress:123:456:789")]
+    [InlineData("progress::")]
+    [InlineData("progress:abc:456")]
+    [InlineData("notify:123")]
+    public void A_malformed_progress_tag_reads_as_nothing(string tag) =>
+        Assert.Null(TorrentTags.ReadProgress(tag));
+
     [Theory]
     [InlineData("ingest")]
     [InlineData("ingest-failed")]
@@ -39,5 +67,6 @@ public class TorrentTagsTests
     {
         Assert.Null(TorrentTags.ReadNotifyChannel(tag));
         Assert.Null(TorrentTags.ReadRequester(tag));
+        Assert.Null(TorrentTags.ReadProgress(tag));
     }
 }

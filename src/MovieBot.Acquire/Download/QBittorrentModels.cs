@@ -41,6 +41,12 @@ public sealed record QBittorrentTorrent
 
     [JsonPropertyName("seq_dl")] public bool SequentialDownload { get; init; }
 
+    /// <summary>Peers with the whole file that this is connected to.</summary>
+    [JsonPropertyName("num_seeds")] public int Seeds { get; init; }
+
+    /// <summary>Peers with the whole file that the tracker knows of, connected or not.</summary>
+    [JsonPropertyName("num_complete")] public int SeedsInSwarm { get; init; }
+
     [JsonPropertyName("ratio")] public double Ratio { get; init; }
 
     /// <summary>The client's own comma-separated tag list, which is where this keeps its notes.</summary>

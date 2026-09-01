@@ -62,6 +62,15 @@ public sealed record DownloadStatus
     public bool IsSequential { get; init; }
 
     /// <summary>
+    /// Peers with the whole file that this is connected to.
+    ///
+    /// Carried because it is the answer to the only question a slow download raises. A download
+    /// sitting at a third for ten minutes is either working or abandoned, and the seed count is
+    /// what tells the two apart.
+    /// </summary>
+    public int Seeds { get; init; }
+
+    /// <summary>
     /// Notes carried on the torrent itself rather than by whoever started it.
     ///
     /// A surface that wants to say something when a download finishes has to remember where to

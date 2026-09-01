@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+The seed count a download is connected to, and a tag naming the message that shows its progress.
+
+The seed count is carried because it is the answer to the only question a slow download raises: a
+download sitting at a third for ten minutes is either working or abandoned, and nothing else
+tells the two apart.
+
 ## 0.6.0
 
 How much of a file in a download can be read from its start without a gap, for anything reading

@@ -45,6 +45,30 @@ public static class TorrentTags
             : null;
 
     /// <summary>
+    /// The message showing this download's progress, as a channel and a message within it.
+    ///
+    /// Kept on the torrent like everything else, so a bot restarted during a download picks the
+    /// same message back up rather than leaving one stuck at whatever it last said.
+    /// </summary>
+    public const string ProgressPrefix = "progress:";
+
+    public static string Progress(ulong channelId, ulong messageId) =>
+        $"{ProgressPrefix}{channelId}:{messageId}";
+
+    /// <summary>Reads the message a progress tag points at, or null when it is not one.</summary>
+    public static (ulong ChannelId, ulong MessageId)? ReadProgress(string tag)
+    {
+        if (!tag.StartsWith(ProgressPrefix, StringComparison.Ordinal)) return null;
+
+        var parts = tag[ProgressPrefix.Length..].Split(':');
+        return parts.Length == 2
+               && ulong.TryParse(parts[0], out var channelId)
+               && ulong.TryParse(parts[1], out var messageId)
+            ? (channelId, messageId)
+            : null;
+    }
+
+    /// <summary>
     /// The download still has to be turned into something the player can open. Carried from the
     /// moment it is started and removed once that work is finished, so a complete download still
     /// wearing it is one nobody can watch yet.
