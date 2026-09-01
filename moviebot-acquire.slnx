@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MovieBot.Acquire/MovieBot.Acquire.csproj" />
+    <Project Path="src/MovieBot.Acquire.Cli/MovieBot.Acquire.Cli.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/MovieBot.Acquire.Tests/MovieBot.Acquire.Tests.csproj" />
+  </Folder>
+</Solution>

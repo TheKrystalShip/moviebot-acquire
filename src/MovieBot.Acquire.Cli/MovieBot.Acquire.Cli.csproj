@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <RootNamespace>TheKrystalShip.MovieBot.Acquire.Cli</RootNamespace>
+    <AssemblyName>moviebot-acquire</AssemblyName>
+    <Version>0.1.0</Version>
+
+    <!-- The passkey is supplied by the environment in production and by user-secrets in
+         development. Nothing about it is ever written into the repository. -->
+    <UserSecretsId>moviebot-acquire</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration.UserSecrets" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../MovieBot.Acquire/MovieBot.Acquire.csproj" />
+  </ItemGroup>
+
+</Project>

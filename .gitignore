@@ -1,0 +1,13 @@
+bin/
+obj/
+*.user
+.vs/
+.idea/
+
+# Downloads and anything the torrent client writes. Nothing acquired is ever committed.
+downloads/
+*.torrent
+
+# Local settings carry the tracker passkey.
+appsettings.Development.json
+appsettings.Local.json
