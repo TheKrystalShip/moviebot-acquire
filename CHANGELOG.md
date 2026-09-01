@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+Downloading: the torrent client over its Web API, the acquisition path from a chosen release to a
+started download, and `get` and `downloads` on the CLI.
+
+Torrents are added with sequential order and first-and-last-piece priority, so a partial file is
+watchable from the beginning rather than only once it finishes.
+
 ## 0.2.0
 
 Autocomplete suggestions for a slash command: a debounced, keystroke-safe layer over the search,

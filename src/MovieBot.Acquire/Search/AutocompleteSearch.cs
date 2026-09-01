@@ -76,6 +76,12 @@ public sealed class AutocompleteSearch(
     ILogger<AutocompleteSearch> logger)
 {
     private readonly Dictionary<string, IReadOnlyList<Release>> _answered = [];
+
+    // Every release ever offered, by torrent id. The surface sends back only the value behind a
+    // row, so this is what turns that value into the release it stood for. It is kept separately
+    // from the query cache because a person picking a row is answering a query that may already
+    // have expired out of it.
+    private readonly Dictionary<long, Release> _offered = [];
     private readonly Dictionary<string, long> _newestPerSession = [];
     private readonly SemaphoreSlim _gate = new(1, 1);
     private long _sequence;
@@ -210,8 +216,25 @@ public sealed class AutocompleteSearch(
             .ToList();
     }
 
-    private IReadOnlyList<ReleaseChoice> Present(IReadOnlyList<Release> releases) =>
-        releases.Select(r => new ReleaseChoice(Label(r), r.TorrentId)).ToList();
+    /// <summary>
+    /// Turns a value the surface sent back into the release it stood for, or null when it was
+    /// never offered by this process.
+    /// </summary>
+    public Release? Resolve(long torrentId)
+    {
+        lock (_offered) return _offered.GetValueOrDefault(torrentId);
+    }
+
+    private IReadOnlyList<ReleaseChoice> Present(IReadOnlyList<Release> releases)
+    {
+        lock (_offered)
+        {
+            foreach (var release in releases)
+                _offered[release.TorrentId] = release;
+        }
+
+        return releases.Select(r => new ReleaseChoice(Label(r), r.TorrentId)).ToList();
+    }
 
     /// <summary>
     /// A row's text, built to fit rather than trimmed to fit: the surface rejects a label over

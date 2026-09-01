@@ -12,7 +12,7 @@ from there. The two share no code and no deployment, only that directory.
 | `moviebot-acquire` CLI — `search`, `imdb`, `budget` | built |
 | Autocomplete suggestions, for a slash command | built |
 | Disk budget | built |
-| Torrent client and the download itself | not built |
+| Torrent client, and the download itself | built, verified against a real torrent |
 | Hand-off to MovieBot ingest | not built |
 
 ## Why there is no scraping in here
@@ -57,6 +57,9 @@ dotnet build moviebot-acquire.slnx -c Release
 
 moviebot-acquire search Heat 1995      # rank what the tracker has
 moviebot-acquire imdb tt0113277        # the same, by exact film
+moviebot-acquire get Heat 1995         # start the top result downloading
+moviebot-acquire get Heat 1995 --pick 4  # or the fourth
+moviebot-acquire downloads             # what is downloading now
 moviebot-acquire budget                # what the download directory holds
 ```
 
@@ -112,6 +115,24 @@ A row's label is built to fit the surface's hundred-character limit rather than 
 the title and year are kept whole and the description gives way, because two rows differing only
 in a cut off description are two rows nobody can choose between. The value behind a row is a
 torrent id, since a truncated release name cannot be resolved back to a release.
+
+## Downloading
+
+The torrent client is qBittorrent, driven over its Web API on loopback, where it is configured to
+let a local request through without credentials. Nothing here holds a password for it.
+
+**Torrents are added sequentially, with first-and-last-piece priority.** The two are separate and
+both are needed: sequential order alone leaves a file that is complete from the beginning and
+still will not open, because a container keeps the index a player needs at one end or the other.
+Together they make a partial file watchable.
+
+**The info hash is computed from the torrent file, not read from a response.** The add endpoint
+answers "Ok." and does not say what it added, and diffing the torrent list before and after
+attributes the wrong one whenever two downloads start close together.
+
+**Disk is checked before the tracker is asked.** The alternative spends a tracker call and a
+torrent file to then refuse. The torrent is fetched before the client is asked to take it, so a
+client that is not running leaves no half-started download behind.
 
 ## Disk
 

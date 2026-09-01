@@ -38,6 +38,21 @@ public static class AcquireServiceCollectionExtensions
         services.AddSingleton<ReleaseRanker>();
         services.AddSingleton<DiskBudget>();
 
+        services.Configure<QBittorrentOptions>(configuration.GetSection(QBittorrentOptions.Section));
+
+        services.AddHttpClient<QBittorrentClient>((sp, http) =>
+        {
+            var qb = sp.GetRequiredService<IOptions<QBittorrentOptions>>().Value;
+            http.BaseAddress = new Uri(qb.BaseUrl.TrimEnd('/') + "/");
+            http.Timeout = TimeSpan.FromSeconds(qb.TimeoutSeconds);
+
+            // The client validates the Referer on anything that changes state, and rejects a
+            // request carrying none as a cross-site attempt.
+            http.DefaultRequestHeaders.Referrer = new Uri(qb.BaseUrl);
+        });
+
+        services.AddSingleton<AcquisitionService>();
+
         services.AddHttpClient<TrackerClient>((sp, http) =>
         {
             var options = sp.GetRequiredService<IOptions<TrackerOptions>>().Value;

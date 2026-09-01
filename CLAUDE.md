@@ -91,6 +91,22 @@ These are measured against what the tracker actually returns. Changing one means
 - **The volume's own free space bounds the budget.** Whichever runs out first is the real
   headroom, and the volume is the one that produces a half-written file rather than a refusal.
 
+## Download invariants
+
+- **The info hash is computed from the torrent file.** The client's add endpoint answers "Ok."
+  and names nothing. `Bencode` locates the info dictionary's raw bytes rather than parsing and
+  re-encoding it: a re-encoding has to reproduce the original byte for byte, and any disagreement
+  yields a hash matching nothing.
+- **Sequential order and first-and-last-piece priority are both set.** Either alone is not
+  enough — sequential gives a file complete from the beginning that still will not open, because
+  the index a player needs sits at one end or the other.
+- **An unrecognised client state reads as starting, never as failed.** The client has states this
+  does not know, and calling one a failure is a lie about a download that is fine.
+- **The client's ETA placeholder is not a duration.** It reports one rather than nothing when it
+  cannot estimate, and showing it produces a film arriving in a hundred years.
+- **Disk is checked before the tracker is asked, and the torrent fetched before the client is
+  asked to take it.** Each ordering exists so a refusal costs nothing and leaves nothing behind.
+
 ## Conventions
 
 - C# namespaces are `TheKrystalShip.MovieBot.Acquire.*`, matching the GitHub org this publishes

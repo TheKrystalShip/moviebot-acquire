@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using TheKrystalShip.MovieBot.Acquire;
 using TheKrystalShip.MovieBot.Acquire.Download;
 using TheKrystalShip.MovieBot.Acquire.Tracker;
+using TheKrystalShip.MovieBot.Acquire.Download;
 using TheKrystalShip.MovieBot.Acquire.Search;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -31,8 +32,15 @@ try
         "search" => await SearchAsync(string.Join(' ', args.Skip(1))),
         "imdb" => await ImdbAsync(args.Skip(1).FirstOrDefault()),
         "budget" => Budget(),
+        "get" => await GetAsync(args.Skip(1).ToArray()),
+        "downloads" => await DownloadsAsync(),
         _ => Help(),
     };
+}
+catch (QBittorrentException ex)
+{
+    Console.Error.WriteLine($"error: {ex.Message}");
+    return 1;
 }
 catch (TrackerException ex)
 {
@@ -102,6 +110,85 @@ int Report(RankedReleases ranked)
     return 0;
 }
 
+async Task<int> GetAsync(string[] rest)
+{
+    // A rank may be given to take something other than the top row, which is how the CLI stands
+    // in for somebody picking off a menu.
+    var pick = 1;
+    var terms = new List<string>();
+    for (var i = 0; i < rest.Length; i++)
+    {
+        if (rest[i] == "--pick" && i + 1 < rest.Length && int.TryParse(rest[i + 1], out var chosen))
+        {
+            pick = chosen;
+            i++;
+            continue;
+        }
+
+        terms.Add(rest[i]);
+    }
+
+    var query = string.Join(' ', terms);
+    if (string.IsNullOrWhiteSpace(query))
+    {
+        Console.Error.WriteLine("error: get needs a title.");
+        return 2;
+    }
+
+    var ranked = await services.GetRequiredService<ReleaseSearch>()
+        .ByTitleAsync(query, cancellation.Token);
+
+    if (ranked.Candidates.Count == 0)
+    {
+        Console.Error.WriteLine(ranked.EmptyExplanation);
+        return 1;
+    }
+
+    if (pick < 1 || pick > ranked.Candidates.Count)
+    {
+        Console.Error.WriteLine($"error: pick must be between 1 and {ranked.Candidates.Count}.");
+        return 2;
+    }
+
+    var release = ranked.Candidates[pick - 1];
+    Console.WriteLine($"{release.ReleaseName}");
+    Console.WriteLine($"  {release.Summary}");
+
+    var result = await services.GetRequiredService<AcquisitionService>()
+        .StartAsync(release, cancellation.Token);
+
+    if (!result.Started)
+    {
+        Console.Error.WriteLine($"not started: {result.Refusal}");
+        return 1;
+    }
+
+    Console.WriteLine($"  started, hash {result.Hash}");
+    return 0;
+}
+
+async Task<int> DownloadsAsync()
+{
+    var downloads = await services.GetRequiredService<AcquisitionService>()
+        .ListAsync(cancellation.Token);
+
+    if (downloads.Count == 0)
+    {
+        Console.Error.WriteLine("nothing downloading.");
+        return 0;
+    }
+
+    foreach (var download in downloads)
+    {
+        Console.WriteLine($"{download.Name}");
+        Console.WriteLine($"  {download.State} · {download.Summary}"
+                          + (download.IsSequential ? " · sequential" : ""));
+        Console.WriteLine($"  {download.Hash}");
+    }
+
+    return 0;
+}
+
 int Budget()
 {
     var reading = services.GetRequiredService<DiskBudget>().Read();
@@ -117,6 +204,8 @@ int Help()
 
           search <title>     rank what the tracker has under a title
           imdb <tt0000000>   the same, by exact film
+          get <title> [--pick N]   start the top result downloading, or the Nth
+          downloads          what is downloading now
           budget             what the download directory holds against its ceiling
 
         The account is configured through Tracker__Username and Tracker__Passkey, in the
