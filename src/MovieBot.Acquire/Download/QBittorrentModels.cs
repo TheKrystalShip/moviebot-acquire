@@ -47,8 +47,30 @@ public sealed record QBittorrentTorrent
     [JsonPropertyName("tags")] public string Tags { get; init; } = "";
 }
 
+/// <summary>The fixed facts about a torrent's layout, as opposed to its progress.</summary>
+public sealed record QBittorrentProperties
+{
+    /// <summary>Every piece is this size but the last, which is what turns a piece index into an offset.</summary>
+    [JsonPropertyName("piece_size")] public long PieceSize { get; init; }
+
+    [JsonPropertyName("pieces_num")] public int PieceCount { get; init; }
+}
+
+/// <summary>One file in a torrent. Their order is the order of their bytes in the piece stream.</summary>
+public sealed record QBittorrentFile
+{
+    [JsonPropertyName("name")] public string Name { get; init; } = "";
+
+    [JsonPropertyName("size")] public long Size { get; init; }
+
+    [JsonPropertyName("index")] public int Index { get; init; }
+}
+
 [JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]
 [JsonSerializable(typeof(IReadOnlyList<QBittorrentTorrent>))]
+[JsonSerializable(typeof(QBittorrentProperties))]
+[JsonSerializable(typeof(IReadOnlyList<QBittorrentFile>))]
+[JsonSerializable(typeof(int[]))]
 public partial class QBittorrentJsonContext : JsonSerializerContext;
 
 /// <summary>The torrent client refused something, or could not be reached.</summary>

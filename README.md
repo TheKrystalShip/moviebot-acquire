@@ -134,6 +134,17 @@ attributes the wrong one whenever two downloads start close together.
 torrent file to then refuse. The torrent is fetched before the client is asked to take it, so a
 client that is not running leaves no half-started download behind.
 
+## Reading a download that is still arriving
+
+`ReadableBytesAsync` reports how many bytes of one file are readable from its start **without a
+gap**. Contiguous is the only useful measure, because whatever reads the file reads it forwards:
+a piece that arrived beyond a missing one is not reachable, and treating overall progress as a
+position hands out an offset with a hole behind it.
+
+Sequential downloads fill contiguously by construction, but this asks rather than assumes — a
+piece can arrive out of order regardless, as an endgame duplicate or a prioritised first-and-last
+piece, and being wrong means reading unwritten file.
+
 ## Disk
 
 A completed download keeps seeding, so nothing here is deleted on a schedule and the directory

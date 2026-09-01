@@ -162,6 +162,92 @@ public sealed class QBittorrentClient(
         }
     }
 
+    /// <summary>
+    /// How many bytes of one file inside a torrent are readable from its start, without a gap.
+    ///
+    /// Contiguous is the only useful measure here, because what reads the file reads it forwards:
+    /// a piece that has arrived beyond a missing one is not reachable, and treating overall
+    /// progress as a position would hand out an offset with a hole behind it.
+    ///
+    /// Torrents downloaded in order fill contiguously by construction. This asks rather than
+    /// assumes, because a piece can arrive out of order regardless — an endgame duplicate, a
+    /// prioritised first-and-last piece — and being wrong here means reading unwritten file.
+    /// </summary>
+    public async Task<long> ReadableBytesAsync(string hash, string filePath, CancellationToken ct)
+    {
+        await EnsureSignedInAsync(ct);
+
+        var properties = await GetJsonAsync(
+            $"api/v2/torrents/properties?hash={Uri.EscapeDataString(hash)}",
+            QBittorrentJsonContext.Default.QBittorrentProperties, ct);
+
+        var files = await GetJsonAsync(
+            $"api/v2/torrents/files?hash={Uri.EscapeDataString(hash)}",
+            QBittorrentJsonContext.Default.IReadOnlyListQBittorrentFile, ct);
+
+        var states = await GetJsonAsync(
+            $"api/v2/torrents/pieceStates?hash={Uri.EscapeDataString(hash)}",
+            QBittorrentJsonContext.Default.Int32Array, ct);
+
+        if (properties is null || files is null || states is null || properties.PieceSize <= 0)
+            return 0;
+
+        // The file's own offset into the torrent's byte stream is the sum of everything before
+        // it. A single-file torrent starts at zero; a film in a folder of extras does not.
+        var wanted = Path.GetFileName(filePath);
+        long fileOffset = 0;
+        long fileSize = 0;
+        var found = false;
+
+        foreach (var file in files.OrderBy(f => f.Index))
+        {
+            if (Path.GetFileName(file.Name).Equals(wanted, StringComparison.Ordinal))
+            {
+                fileSize = file.Size;
+                found = true;
+                break;
+            }
+
+            fileOffset += file.Size;
+        }
+
+        if (!found) return 0;
+
+        // Two is the client's spelling of "downloaded". The first piece that is not is where
+        // reading forwards has to stop.
+        var missing = Array.IndexOf(states, 0) is var zero && zero >= 0 ? zero : states.Length;
+        var partial = Array.IndexOf(states, 1);
+        if (partial >= 0 && partial < missing) missing = partial;
+
+        var contiguous = (long)missing * properties.PieceSize;
+        var readable = contiguous - fileOffset;
+
+        return Math.Clamp(readable, 0, fileSize);
+    }
+
+    private async Task<T?> GetJsonAsync<T>(
+        string url, System.Text.Json.Serialization.Metadata.JsonTypeInfo<T> type, CancellationToken ct)
+    {
+        try
+        {
+            using var response = await http.GetAsync(url, ct);
+            if (!response.IsSuccessStatusCode)
+                throw new QBittorrentException(
+                    $"The torrent client answered {(int)response.StatusCode}.");
+
+            return JsonSerializer.Deserialize(await response.Content.ReadAsStringAsync(ct), type);
+        }
+        catch (JsonException ex)
+        {
+            throw new QBittorrentException("The torrent client's answer could not be read.", ex);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
+                                   && !ct.IsCancellationRequested)
+        {
+            throw new QBittorrentException("The torrent client could not be reached.", ex);
+        }
+    }
+
     private static DownloadStatus Describe(QBittorrentTorrent torrent) => new()
     {
         Hash = torrent.Hash,

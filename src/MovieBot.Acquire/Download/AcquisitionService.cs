@@ -92,6 +92,15 @@ public sealed class AcquisitionService(
     public Task TagAsync(string hash, string tag, CancellationToken ct) =>
         torrents.AddTagAsync(hash, tag, ct);
 
+    /// <summary>
+    /// How many bytes of one file in a download are readable from its start without a gap.
+    ///
+    /// For anything reading the file while it is still arriving: the file is its full length from
+    /// the moment it is created, so its size says nothing about how much of it is real.
+    /// </summary>
+    public Task<long> ReadableBytesAsync(string hash, string filePath, CancellationToken ct) =>
+        torrents.ReadableBytesAsync(hash, filePath, ct);
+
     /// <summary>One download, or null when this process never started it.</summary>
     public Task<DownloadStatus?> StatusAsync(string hash, CancellationToken ct) =>
         torrents.GetAsync(hash, ct);

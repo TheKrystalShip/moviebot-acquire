@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+How much of a file in a download can be read from its start without a gap, for anything reading
+it while it is still arriving. The file is its full length from the moment it is created, so its
+size says nothing about how much of it is real.
+
+`get` tags what it starts for ingest, so a film fetched from the shell takes the same path as one
+asked for in chat.
+
 ## 0.5.0
 
 The tag vocabulary processes use to leave notes on a torrent for each other, and the ability to

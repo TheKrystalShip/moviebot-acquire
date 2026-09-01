@@ -153,8 +153,10 @@ async Task<int> GetAsync(string[] rest)
     Console.WriteLine($"{release.ReleaseName}");
     Console.WriteLine($"  {release.Summary}");
 
+    // Tagged for ingest like any other request. A film fetched from the shell is a film
+    // somebody means to watch, so it goes through the same path as one asked for in chat.
     var result = await services.GetRequiredService<AcquisitionService>()
-        .StartAsync(release, null, cancellation.Token);
+        .StartAsync(release, [TorrentTags.NeedsIngest], cancellation.Token);
 
     if (!result.Started)
     {
