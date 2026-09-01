@@ -25,11 +25,17 @@ public sealed class TrackerOptions
     public string Passkey { get; set; } = "";
 
     /// <summary>
-    /// The shortest gap between two calls to the API, in milliseconds. The tracker caps how often
-    /// a member may call it and answers past the cap with an error rather than a result, so the
-    /// client paces itself instead of discovering the ceiling in front of a room.
+    /// The shortest gap between two calls to the API, in milliseconds.
+    ///
+    /// The tracker caps how often a member may call it and answers past the cap with an error
+    /// rather than a result, so the client paces itself instead of discovering the ceiling in
+    /// front of a room. This is a self-imposed floor and not the tracker's published figure.
+    ///
+    /// It has to stay well under the autocomplete deadline: it is charged to whoever is queued
+    /// behind a call, and a floor above that deadline answers a second person searching with
+    /// nothing every time.
     /// </summary>
-    public int MinimumRequestIntervalMs { get; set; } = 2000;
+    public int MinimumRequestIntervalMs { get; set; } = 500;
 
     /// <summary>
     /// How long a search result stays reusable, in seconds. Two people asking for the same film

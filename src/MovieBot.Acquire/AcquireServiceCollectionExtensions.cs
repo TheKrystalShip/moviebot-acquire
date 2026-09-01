@@ -28,6 +28,13 @@ public static class AcquireServiceCollectionExtensions
             return policy;
         });
 
+        services.AddSingleton(_ =>
+        {
+            var autocomplete = new AutocompleteOptions();
+            configuration.GetSection(AutocompleteOptions.Section).Bind(autocomplete);
+            return autocomplete;
+        });
+
         services.AddSingleton<ReleaseRanker>();
         services.AddSingleton<DiskBudget>();
 
@@ -42,6 +49,8 @@ public static class AcquireServiceCollectionExtensions
         });
 
         services.AddSingleton<ReleaseSearch>();
+        services.AddSingleton<IReleaseSearch>(sp => sp.GetRequiredService<ReleaseSearch>());
+        services.AddSingleton<AutocompleteSearch>();
 
         return services;
     }

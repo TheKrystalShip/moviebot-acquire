@@ -4,6 +4,17 @@ using TheKrystalShip.MovieBot.Acquire.Tracker;
 namespace TheKrystalShip.MovieBot.Acquire.Search;
 
 /// <summary>
+/// Finding a film, as the autocomplete layer needs it. Separate from the implementation so that
+/// layer's pacing can be tested without a tracker to call.
+/// </summary>
+public interface IReleaseSearch
+{
+    Task<RankedReleases> ByTitleAsync(string query, CancellationToken ct);
+
+    Task<RankedReleases> ByImdbAsync(string imdbId, CancellationToken ct);
+}
+
+/// <summary>
 /// The one entry point anything outside this project uses to find a film.
 ///
 /// It is the seam that keeps the tracker's shapes and the account's passkey inside this project:
@@ -13,7 +24,7 @@ namespace TheKrystalShip.MovieBot.Acquire.Search;
 public sealed class ReleaseSearch(
     TrackerClient client,
     ReleaseRanker ranker,
-    ILogger<ReleaseSearch> logger)
+    ILogger<ReleaseSearch> logger) : IReleaseSearch
 {
     /// <summary>
     /// Finds candidates for what somebody typed, which is normally a title and often a year.

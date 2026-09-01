@@ -61,6 +61,24 @@ These are measured against what the tracker actually returns. Changing one means
 - **The client paces itself.** The tracker caps how often a member may call it and answers past
   the cap with an error rather than a result.
 
+## Autocomplete invariants
+
+- **A tracker call is never made per keystroke.** The surface sends a request per character. The
+  order is: exact answer held, then narrowed from a shorter answer held, then the debounce, then
+  the tracker.
+- **Narrowing does not wait for the debounce.** It costs no call, and an answer already held is
+  better shown at once.
+- **The debounce is keyed per person.** Shared, a room where somebody is mid-word answers
+  everybody else with nothing.
+- **The deadline covers queueing as well as the call.** `TrackerOptions.MinimumRequestIntervalMs`
+  is charged to whoever is queued behind a call, so a pacing floor above the autocomplete
+  deadline answers a second person searching with nothing every time. Raising one means checking
+  the other.
+- **A failing tracker surfaces as an empty list, never as a broken command.** The next keystroke
+  corrects it.
+- **Labels are built to fit, not trimmed to fit.** The surface rejects a label over its limit
+  outright, and the identifying half is what must survive.
+
 ## Disk invariants
 
 - **The budget is measured off the filesystem on every call, never accumulated.** A running

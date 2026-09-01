@@ -10,6 +10,7 @@ from there. The two share no code and no deployment, only that directory.
 |---|---|
 | Tracker search, parsing and ranking | built, verified against the live tracker |
 | `moviebot-acquire` CLI — `search`, `imdb`, `budget` | built |
+| Autocomplete suggestions, for a slash command | built |
 | Disk budget | built |
 | Torrent client and the download itself | not built |
 | Hand-off to MovieBot ingest | not built |
@@ -88,6 +89,29 @@ completed download to keep seeding.
 **Rejections are counted, never dropped.** A search that finds a dozen releases and offers none
 is a normal outcome, and a menu that simply comes back empty is indistinguishable from a broken
 tracker call.
+
+## Autocomplete
+
+`AutocompleteSearch` serves a slash command's suggestion list. A chat surface sends a request on
+every character typed and expects an answer within a few seconds, so answering each one against
+the tracker is both far past what it permits and slower than the typing.
+
+Four things keep a typed query to roughly one call:
+
+- Nothing under three characters is looked up.
+- **A query extending one already answered is filtered locally.** The tracker narrows on the
+  words it is given, so a longer query's results are a subset of a shorter one's. This costs no
+  call and so does not wait — results already held appear as they are typed past.
+- **Anything left waits for typing to stop**, half a second by default. A keystroke arriving
+  inside the window supersedes the one before it, which shows what is known rather than asking.
+  The debounce is per person: one person mid-word must not suppress another's finished query.
+- **One call is in flight at a time**, and a second person queues behind the first for as long
+  as the deadline allows rather than being answered with nothing.
+
+A row's label is built to fit the surface's hundred-character limit rather than trimmed to it:
+the title and year are kept whole and the description gives way, because two rows differing only
+in a cut off description are two rows nobody can choose between. The value behind a row is a
+torrent id, since a truncated release name cannot be resolved back to a release.
 
 ## Disk
 
