@@ -37,7 +37,7 @@ public sealed class ImdbClient(HttpClient http, ILogger<ImdbClient> logger)
         {
             if (_cache.TryGetValue(tag, out var cached)) return cached;
 
-            var found = (await SuggestAsync($"t/{tag}", ct))
+            var found = (await FetchAsync($"t/{tag}", ct))
                 .FirstOrDefault(s => string.Equals(s.Id, tag, StringComparison.OrdinalIgnoreCase));
 
             var title = found is null ? null : Read(found);
@@ -60,7 +60,7 @@ public sealed class ImdbClient(HttpClient http, ILogger<ImdbClient> logger)
     {
         if (string.IsNullOrWhiteSpace(title)) return null;
 
-        var results = (await SuggestAsync($"x/{Slug(title)}", ct))
+        var results = (await FetchAsync($"x/{Slug(title)}", ct))
             .Select(Read)
             .Where(t => t.IsFeature)
             .ToList();
@@ -82,7 +82,29 @@ public sealed class ImdbClient(HttpClient http, ILogger<ImdbClient> logger)
         return named.FirstOrDefault() ?? results[0];
     }
 
-    private async Task<IReadOnlyList<ImdbSuggestion>> SuggestAsync(string path, CancellationToken ct)
+    /// <summary>
+    /// The films the index offers for what somebody has typed so far, in the index's own order,
+    /// for a surface that suggests as a person types.
+    ///
+    /// Text carrying an id — a pasted link, most often — answers with the one film the id names
+    /// rather than with a search for the text of the link, which would find nothing. Only
+    /// features are offered; a series or an episode is not something this pipeline can fetch.
+    /// </summary>
+    public async Task<IReadOnlyList<ImdbTitle>> SuggestAsync(string typed, CancellationToken ct)
+    {
+        if (ImdbId.FromText(typed) is { } pasted)
+            return await LookupAsync(pasted, ct) is { IsFeature: true } named ? [named] : [];
+
+        var slug = Slug(typed);
+        if (slug.Length == 0) return [];
+
+        return (await FetchAsync($"x/{slug}", ct))
+            .Select(Read)
+            .Where(t => t.IsFeature && t.ImdbId.Length > 0 && t.Title.Length > 0)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<ImdbSuggestion>> FetchAsync(string path, CancellationToken ct)
     {
         try
         {

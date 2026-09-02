@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.13.0
+
+An IMDb id is read out of whatever somebody pasted, and the catalogue suggests films as a person
+types.
+
+`ImdbId.FromText` takes the `tt` form from anywhere in a piece of text: the film's page, the mobile
+site, a share link with tracking on the end, or the id on its own. A bare number is left alone,
+because a bare number typed into a film search is a title.
+
+`ImdbClient.SuggestAsync` answers a surface that suggests while somebody types, with the features
+the index offers in its own order. Text carrying an id answers with the film the id names rather
+than a search for the text of a link, which would find nothing.
+
 ## 0.12.0
 
 A tag for a film being watchable, separate from a film owing a transcode.

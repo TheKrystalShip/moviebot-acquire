@@ -137,6 +137,38 @@ public sealed class ImdbClientTests
         Assert.Null(await Client(body).SearchAsync("Heat", 1995, default));
     }
 
+    /// <summary>
+    /// A pasted link is answered with the film it names, not with a search for the text of the
+    /// link. The index answers that search with nothing, which reads as the link being wrong.
+    /// </summary>
+    [Fact]
+    public async Task A_pasted_link_suggests_the_film_it_names()
+    {
+        var offered = await Client(Prada).SuggestAsync(
+            "https://www.imdb.com/title/tt0458352/?ref_=fn_al_tt_1", default);
+
+        Assert.Equal(["tt0458352"], offered.Select(t => t.ImdbId));
+    }
+
+    [Fact]
+    public async Task Typed_text_suggests_the_films_the_index_offers_in_its_order()
+    {
+        var offered = await Client(Gladiators).SuggestAsync("gladiator", default);
+
+        Assert.Equal(["tt0172495", "tt9218128", "tt0111667"], offered.Select(t => t.ImdbId));
+    }
+
+    [Fact]
+    public async Task A_suggestion_offers_no_series()
+    {
+        const string body = """
+            {"d":[{"id":"tt1","l":"Heat","y":1995,"qid":"tvSeries"},
+                  {"id":"tt0113277","l":"Heat","y":1995,"qid":"movie"}],"q":"heat","v":1}
+            """;
+
+        Assert.Equal(["tt0113277"], (await Client(body).SuggestAsync("heat", default)).Select(t => t.ImdbId));
+    }
+
     private static ImdbClient Client(string body, HttpStatusCode status = HttpStatusCode.OK) =>
         new(new HttpClient(new StubHandler(body, status)), NullLogger<ImdbClient>.Instance);
 
