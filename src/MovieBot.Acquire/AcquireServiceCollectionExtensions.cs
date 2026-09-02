@@ -63,6 +63,13 @@ public static class AcquireServiceCollectionExtensions
             http.DefaultRequestHeaders.UserAgent.ParseAdd("MovieBot/0.1 (+acquire)");
         });
 
+        // No key, and named as itself: the index answers an unidentified client inconsistently.
+        services.AddHttpClient<Imdb.ImdbClient>(http =>
+        {
+            http.Timeout = TimeSpan.FromSeconds(10);
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("MovieBot/0.1 (+acquire)");
+        });
+
         services.AddSingleton<ReleaseSearch>();
         services.AddSingleton<IReleaseSearch>(sp => sp.GetRequiredService<ReleaseSearch>());
         services.AddSingleton<AutocompleteSearch>();

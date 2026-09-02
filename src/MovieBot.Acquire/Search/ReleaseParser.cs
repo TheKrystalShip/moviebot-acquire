@@ -33,6 +33,14 @@ public static partial class ReleaseParser
     private static partial Regex TrailingGroup();
 
     /// <summary>Parses one tracker row. The download link on the row is deliberately not read.</summary>
+    /// <summary>
+    /// What can be read out of a release name alone, for the places that hold one and never held
+    /// a tracker row: a download in progress, a film already on disk. Everything a row carries and
+    /// a name does not is left at its default rather than guessed at.
+    /// </summary>
+    public static Release ParseName(string releaseName) =>
+        Parse(new TrackerTorrent { Name = releaseName });
+
     public static Release Parse(TrackerTorrent row)
     {
         var name = row.Name;

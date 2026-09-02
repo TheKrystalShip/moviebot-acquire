@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.0
+
+What a film is called, and what it looks like.
+
+A release name is what a film arrives as and is not what it is called: it carries the year among
+the resolution and the codec, keeps whichever edition words the packer felt like, loses every
+apostrophe, and says nothing about who is in it or what its poster looks like. `ImdbClient` asks
+the catalogue instead — by id where the tracker gave one, by name and year where it did not — and
+answers with the name, the year, the top billing and the poster.
+
+It reads the index that answers the catalogue's own search box, which is a JSON endpoint and not a
+page. The title pages answer anything that is not a browser with an empty 202, so the only other
+way in is behind a key, and a key would buy a plot and a rating and nothing else that is wanted.
+
+A name and a year written together is now one thing, `Release.Display`, rather than three: written
+out separately in each place a film is shown, it is how the message that starts a download and the
+message that says it is ready end up naming the same film differently.
+
 ## 0.10.0
 
 A tag naming which film a download is, as the tracker identified it.

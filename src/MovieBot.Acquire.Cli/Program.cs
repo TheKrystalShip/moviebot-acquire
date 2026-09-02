@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using TheKrystalShip.MovieBot.Acquire;
 using TheKrystalShip.MovieBot.Acquire.Download;
 using TheKrystalShip.MovieBot.Acquire.Tracker;
+using TheKrystalShip.MovieBot.Acquire.Imdb;
 using TheKrystalShip.MovieBot.Acquire.Search;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -30,6 +31,7 @@ try
     {
         "search" => await SearchAsync(string.Join(' ', args.Skip(1))),
         "imdb" => await ImdbAsync(args.Skip(1).FirstOrDefault()),
+        "film" => await FilmAsync(string.Join(' ', args.Skip(1))),
         "budget" => Budget(),
         "get" => await GetAsync(args.Skip(1).ToArray()),
         "downloads" => await DownloadsAsync(),
@@ -198,6 +200,35 @@ int Budget()
     return reading.State == BudgetState.Full ? 1 : 0;
 }
 
+/// <summary>What the title index holds for a film: the name, the year, the billing, the poster.</summary>
+async Task<int> FilmAsync(string query)
+{
+    if (string.IsNullOrWhiteSpace(query))
+    {
+        Console.Error.WriteLine("error: film needs an id or a name.");
+        return 2;
+    }
+
+    var imdb = services.GetRequiredService<ImdbClient>();
+
+    var film = TheKrystalShip.MovieBot.Acquire.ImdbId.IsValid(query)
+        ? await imdb.LookupAsync(query, cancellation.Token)
+        : await imdb.SearchAsync(query, null, cancellation.Token);
+
+    if (film is null)
+    {
+        Console.Error.WriteLine($"nothing indexed under {query}.");
+        return 1;
+    }
+
+    Console.WriteLine($"{film.Title}{(film.Year is { } y ? $" ({y})" : "")}");
+    Console.WriteLine($"  imdb      {film.ImdbId}");
+    Console.WriteLine($"  kind      {film.Kind ?? "unknown"}{(film.IsFeature ? "" : "  (not a film)")}");
+    Console.WriteLine($"  starring  {film.Starring ?? "not listed"}");
+    Console.WriteLine($"  poster    {film.PosterAt(600)?.ToString() ?? "none"}");
+    return 0;
+}
+
 int Help()
 {
     Console.WriteLine("""
@@ -205,6 +236,7 @@ int Help()
 
           search <title>     rank what the tracker has under a title
           imdb <tt0000000>   the same, by exact film
+          film <id|name>     what the title index holds: name, year, billing, poster
           get <title> [--pick N]   start the top result downloading, or the Nth
           downloads          what is downloading now
           budget             what the download directory holds against its ceiling

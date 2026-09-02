@@ -29,6 +29,19 @@ public sealed record Release
 
     public int? Year { get; init; }
 
+    /// <summary>
+    /// What to call the film, from what the release name gave up.
+    ///
+    /// The one spelling of it. A name and a year written together is the obvious thing and was
+    /// being written out separately everywhere a film is shown, which is how a film ends up
+    /// named one way in the message that starts its download and another in the one that says it
+    /// is ready.
+    /// </summary>
+    public string Display =>
+        string.IsNullOrWhiteSpace(Title) ? ReleaseName
+        : Year is { } year ? $"{Title} ({year})"
+        : Title;
+
     public string? ImdbId { get; init; }
 
     public Resolution Resolution { get; init; }

@@ -104,6 +104,27 @@ These are measured against what the tracker actually returns. Changing one means
   line of plain text with a success status, and a client that does not check writes it to disk as
   a valid, tiny subtitle file.
 
+## Title index invariants
+
+The catalogue is asked what a film is called and what its poster looks like. `ImdbClient` is the
+only thing that talks to it.
+
+- **This is not scraping, and the distinction is the same one the tracker's rule makes.** The
+  index that answers the site's own search box is a JSON endpoint and is read as one. The title
+  pages are not: they answer anything that is not a browser with an empty `202`, and parsing them
+  would be exactly the wrong turn the tracker rule describes.
+- **There is no key and none is needed.** What the index holds — the name, the year, the top
+  billing and the poster — is all of what a message about a film shows. The APIs behind a key add
+  a plot and a rating and nothing else that is currently wanted.
+- **A poster is asked for at the size it will be seen.** The originals are a few thousand pixels
+  tall; the image host takes the width in the file name, and asking for it is the difference
+  between a poster that renders in a message and one that times out on the way.
+- **The index is ordered by what people are searching for today**, which puts a sequel above the
+  film it follows. An exact name beats that ordering, and a year beats everything: it is the whole
+  of what separates a remake from what it remade.
+- **A search that cannot be sure answers with nothing.** A film named wrongly is worse than one
+  not named at all, because everything downstream believes it.
+
 ## Disk invariants
 
 - **The budget is measured off the filesystem on every call, never accumulated.** A running
