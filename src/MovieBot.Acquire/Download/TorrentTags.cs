@@ -85,10 +85,25 @@ public static class TorrentTags
 
     /// <summary>
     /// The download still has to be turned into something the player can open. Carried from the
-    /// moment it is started and removed once that work is finished, so a complete download still
-    /// wearing it is one nobody can watch yet.
+    /// moment it is started and removed only once that work has actually finished, so a download
+    /// still wearing it is one whose transcode is owed — whether it has not begun, is running, or
+    /// was interrupted partway.
+    ///
+    /// It says nothing about whether the film can be watched yet; <see cref="Watchable"/> says
+    /// that. One tag answering both questions is what made an interrupted transcode unrecoverable:
+    /// cleared the moment a film became playable, it was no longer there to say that the rest of
+    /// the work was still owed, and nothing ever picked the film up again.
     /// </summary>
     public const string NeedsIngest = "ingest";
+
+    /// <summary>
+    /// There is enough of the film written that the player can open it.
+    ///
+    /// Set within seconds of a transcode starting, long before it ends, because that is when a
+    /// person can begin watching. It is what a surface waits for before telling anybody the film
+    /// is ready.
+    /// </summary>
+    public const string Watchable = "watchable";
 
     /// <summary>
     /// The film arrived but could not be made watchable. Distinct from simply not being done:

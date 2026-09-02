@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.12.0
+
+A tag for a film being watchable, separate from a film owing a transcode.
+
+One tag was answering both questions. It was cleared the moment a film became playable — seconds
+into a transcode, so the announcement could go out — which left nothing to say that the hour of
+work after that point was still owed. A process that stopped anywhere in that hour abandoned the
+film: marked failed, never picked up again, and the log line claiming it stayed owed was untrue.
+
+`NeedsIngest` now means what it says and is cleared when the transcode actually finishes.
+`Watchable` is what a surface waits for before telling anybody a film is ready.
+
 ## 0.11.0
 
 What a film is called, and what it looks like.
