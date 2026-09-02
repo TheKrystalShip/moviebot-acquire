@@ -47,6 +47,24 @@ public class TorrentTagsTests
         Assert.Equal(222UL, read.Value.MessageId);
     }
 
+    [Fact]
+    public void A_room_survives_the_round_trip() =>
+        Assert.Equal(918273645UL, TorrentTags.ReadRoom(TorrentTags.Room(918273645UL)));
+
+    [Fact]
+    public void A_library_id_survives_the_round_trip() =>
+        Assert.Equal("heat-1995", TorrentTags.ReadLibrary(TorrentTags.Library("heat-1995")));
+
+    [Fact]
+    public void A_room_tag_is_not_read_as_a_channel_or_a_requester()
+    {
+        // The same shape as both. Read as a channel it would announce a film into a voice
+        // channel; read as a requester it would ping a channel as though it were a person.
+        Assert.Null(TorrentTags.ReadNotifyChannel(TorrentTags.Room(1234567890UL)));
+        Assert.Null(TorrentTags.ReadRequester(TorrentTags.Room(1234567890UL)));
+        Assert.Null(TorrentTags.ReadRoom(TorrentTags.Notify(1234567890UL)));
+    }
+
     [Theory]
     [InlineData("progress:123")]
     [InlineData("progress:123:456:789")]
@@ -62,11 +80,15 @@ public class TorrentTagsTests
     [InlineData("notify:")]
     [InlineData("requester:")]
     [InlineData("notify:not-a-number")]
+    [InlineData("room:")]
+    [InlineData("library:")]
     [InlineData("")]
     public void Anything_else_reads_as_nothing(string tag)
     {
         Assert.Null(TorrentTags.ReadNotifyChannel(tag));
         Assert.Null(TorrentTags.ReadRequester(tag));
         Assert.Null(TorrentTags.ReadProgress(tag));
+        Assert.Null(TorrentTags.ReadRoom(tag));
+        Assert.Null(TorrentTags.ReadLibrary(tag));
     }
 }

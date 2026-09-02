@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.14.0
+
+Two more notes a torrent carries: the room a film is to play in, and the id it went under in the
+library.
+
+`TorrentTags.Room` names a voice channel. Somebody who picks a film that is not here yet has asked
+to watch it, and the download is only the means, so the room rides on the torrent and whichever
+pass sees the film become watchable loads it there. `TorrentTags.Library` is written by the process
+that names the film in the library, so a surface opening it holds the fact rather than a second
+parse of the release name.
+
 ## 0.13.0
 
 An IMDb id is read out of whatever somebody pasted, and the catalogue suggests films as a person

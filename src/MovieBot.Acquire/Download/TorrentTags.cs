@@ -69,6 +69,44 @@ public static class TorrentTags
     }
 
     /// <summary>
+    /// The room the film is to play in once it can be watched, as the voice channel's id.
+    ///
+    /// Somebody who picks a film that is not here yet has asked to watch it, not to file it: the
+    /// download is the means. The room is written on the torrent so that whichever pass sees the
+    /// film become watchable, in whichever process is running by then, loads it into that room and
+    /// hands the room the way in.
+    /// </summary>
+    public const string RoomPrefix = "room:";
+
+    public static string Room(ulong voiceChannelId) => $"{RoomPrefix}{voiceChannelId}";
+
+    /// <summary>Reads the voice channel out of a room tag, or null when it is not one.</summary>
+    public static ulong? ReadRoom(string tag) =>
+        tag.StartsWith(RoomPrefix, StringComparison.Ordinal)
+        && ulong.TryParse(tag[RoomPrefix.Length..], out var voiceChannelId)
+            ? voiceChannelId
+            : null;
+
+    /// <summary>
+    /// The id the film goes under in the library, written by the process that named it there.
+    ///
+    /// A surface that wants to open the film once it is watchable needs to know which library
+    /// entry the download became, and deriving that a second time from the release name is a
+    /// guess where this is a fact: the two parsers would not disagree loudly, they would simply
+    /// open nothing.
+    /// </summary>
+    public const string LibraryPrefix = "library:";
+
+    public static string Library(string id) => $"{LibraryPrefix}{id}";
+
+    /// <summary>Reads the library id out of a library tag, or null when it is not one.</summary>
+    public static string? ReadLibrary(string tag) =>
+        tag.StartsWith(LibraryPrefix, StringComparison.Ordinal)
+        && tag.Length > LibraryPrefix.Length
+            ? tag[LibraryPrefix.Length..]
+            : null;
+
+    /// <summary>
     /// Which film this is, as the tracker identified it. Carried so the library can hold the id
     /// rather than re-deriving it from a release name, which is a guess where this is a fact.
     /// </summary>
