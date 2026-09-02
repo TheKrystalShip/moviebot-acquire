@@ -79,6 +79,31 @@ These are measured against what the tracker actually returns. Changing one means
 - **Labels are built to fit, not trimmed to fit.** The surface rejects a label over its limit
   outright, and the identifying half is what must survive.
 
+## Subtitle invariants
+
+- **Searching is free; downloading is not.** Only a download spends the day's allowance, so
+  everything that can be judged from a search result is judged before one is spent.
+- **Every check has three answers, not two.** Most uploads declare no frame rate and almost none
+  are indexed against a particular file. Treating absent evidence as a failure would condemn
+  nearly every subtitle that exists, so unknown is its own answer and never counts against a
+  candidate.
+- **A measurement outranks anything an uploader typed.** Where a film already carries a subtitle
+  that fits it, a candidate is measured against it: each cue votes for its distance to every
+  nearby reference cue and the winning offset is the answer. The consensus threshold is measured,
+  not chosen — another English subtitle for the same film reaches 20 per cent, that film's
+  Romanian track 13, and its commentary track under 3.
+- **A subtitle whose timing stretches has no offset, and none is reported.** No single shift fits
+  one, so refusing to align is the honest answer and the frame-rate check is what names the cause.
+- **Character encoding is not a fitness check.** It says nothing about whether a subtitle matches
+  the film, and it is repaired on the way in. Showing it as a warning steers people away from
+  subtitles that are perfectly good.
+- **Query strings are built sorted and without default values.** The API answers anything else
+  with a redirect to the canonical spelling, so an unnormalised query yields HTML where JSON was
+  expected — and only on some calls, which reads as an intermittent fault rather than a mistake.
+- **A short answer to a download link is a message, not a subtitle.** Being throttled arrives as a
+  line of plain text with a success status, and a client that does not check writes it to disk as
+  a valid, tiny subtitle file.
+
 ## Disk invariants
 
 - **The budget is measured off the filesystem on every call, never accumulated.** A running

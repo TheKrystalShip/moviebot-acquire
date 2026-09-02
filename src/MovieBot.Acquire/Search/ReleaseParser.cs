@@ -113,7 +113,8 @@ public static partial class ReleaseParser
         if (Contains(name, "WEB-DL") || Contains(name, "WEBRip") || Contains(name, "WEB"))
             return Source.Web;
         if (Contains(name, "HDTV")) return Source.Web;
-        if (Contains(name, "DVD") || Contains(name, "PAL") || Contains(name, "NTSC"))
+        if (Contains(name, "DVDRip") || Contains(name, "DVD9") || Contains(name, "DVD5")
+            || Contains(name, "DVD") || Contains(name, "PAL") || Contains(name, "NTSC"))
             return Source.Dvd;
         if (Contains(name, "CAM") || Contains(name, "TELESYNC")) return Source.Cam;
         return Source.Unknown;

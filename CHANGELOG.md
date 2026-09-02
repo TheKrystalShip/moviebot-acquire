@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.9.0
+
+A client for the subtitle index, and the judgement needed to spend its allowance well.
+
+Searching is free and downloading is not, so everything that can be decided before a download is
+decided first: whether a subtitle was indexed against this exact file, whether its frame rate
+matches, and whether it came off the same kind of source. Each answer is one of three rather than
+two, because most uploads declare no frame rate and almost none are indexed against a particular
+file, and reading that silence as a fault would condemn nearly every subtitle there is.
+
+The strongest check is not a comparison of what an uploader typed but a measurement. Where a film
+already carries a subtitle known to fit it, a candidate's cue timings are measured against it and
+the offset between them is found by consensus. A subtitle whose timing stretches rather than
+shifts has no single offset that fits, so none is reported: failing to align is the useful answer.
+
+Character encoding is deliberately not among the checks. It says nothing about whether a subtitle
+fits the film and it is repaired on the way in, so showing it would steer people away from
+subtitles that are good.
+
+### Fixed
+
+- A DVDRip release parses as a DVD source. Its resolution was read from that name but its source
+  was not, so every DVDRip came through as an unknown source and ranked as though nothing were
+  known about it.
+
 ## 0.8.0
 
 The seed count a download is connected to, and a tag naming the message that shows its progress.
