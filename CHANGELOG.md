@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.0
+
+A tag naming which film a download is, as the tracker identified it.
+
+The tracker states the IMDb id outright on every row it returns. Recording it at the moment a
+download starts is the only chance to keep a fact: everything downstream would otherwise have to
+re-derive the film from a release name, which is a guess.
+
 ## 0.9.0
 
 A client for the subtitle index, and the judgement needed to spend its allowance well.

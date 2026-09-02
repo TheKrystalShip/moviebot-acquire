@@ -69,6 +69,21 @@ public static class TorrentTags
     }
 
     /// <summary>
+    /// Which film this is, as the tracker identified it. Carried so the library can hold the id
+    /// rather than re-deriving it from a release name, which is a guess where this is a fact.
+    /// </summary>
+    public const string ImdbPrefix = "imdb:";
+
+    public static string Imdb(string imdbId) => $"{ImdbPrefix}{imdbId}";
+
+    /// <summary>Reads the film out of an imdb tag, or null when it is not one.</summary>
+    public static string? ReadImdb(string tag) =>
+        tag.StartsWith(ImdbPrefix, StringComparison.Ordinal)
+        && ImdbId.IsValid(tag[ImdbPrefix.Length..])
+            ? tag[ImdbPrefix.Length..]
+            : null;
+
+    /// <summary>
     /// The download still has to be turned into something the player can open. Carried from the
     /// moment it is started and removed once that work is finished, so a complete download still
     /// wearing it is one nobody can watch yet.
