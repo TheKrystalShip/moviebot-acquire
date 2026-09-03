@@ -1,19 +1,22 @@
 # moviebot-acquire
 
 Finds films on a private tracker and fetches them to disk. It is the acquiring half of the
-MovieBot pipeline: it ends where a file lands in a directory, and MovieBot ingests and streams
-from there. The two share no code and no deployment, only that directory.
+MovieBot pipeline: this reaches the tracker, the torrent client and the title index, and MovieBot
+takes what lands on disk and makes it watchable. MovieBot compiles against this checkout, so the
+two move together.
 
 ## Status
 
 | Piece | State |
 |---|---|
 | Tracker search, parsing and ranking | built, verified against the live tracker |
-| `moviebot-acquire` CLI — `search`, `imdb`, `budget` | built |
+| `moviebot-acquire` CLI — `search`, `imdb`, `film`, `get`, `downloads`, `budget` | built |
 | Autocomplete suggestions, for a slash command | built |
 | Disk budget | built |
 | Torrent client, and the download itself | built, verified against a real torrent |
-| Hand-off to MovieBot ingest | not built |
+| Title index, for what a film is called | built |
+| Retention, and keeping a film | built |
+| Hand-off to MovieBot ingest | built, and running as `moviebot-handoff` |
 
 ## Why there is no scraping in here
 

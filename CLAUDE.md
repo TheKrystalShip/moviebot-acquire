@@ -5,9 +5,19 @@ Guidance for Claude Code working in this repository.
 ## What this is
 
 moviebot-acquire finds films on a private tracker and fetches them to disk. It is the acquiring
-half of the MovieBot pipeline and a standalone project: it shares no code, no packages and no
-deployment with `moviebot`, which sits beside it in this workspace. The seam between them is a
-directory on disk — this writes a file into it, MovieBot ingests and streams from it.
+half of the MovieBot pipeline: this reaches the tracker, the torrent client and the title index,
+and `moviebot` — the checkout beside it in this workspace — takes what lands on disk and makes it
+watchable.
+
+**It is a library first, and `moviebot` compiles against this working copy.**
+`MovieBot.Api`, `MovieBot.Bot` and `MovieBot.Handoff` each hold a `ProjectReference` on
+`src/MovieBot.Acquire` by relative path, so a change to a public type here is a change to that
+build in the same pass, and an edit that compiles in this solution can still break the one next
+door. Build both after touching anything public. `moviebot-acquire.slnx` covers the library, the
+CLI and the tests; the consumers are outside it.
+
+The `moviebot-acquire` CLI is this repository's own surface onto the same library, and the way
+to exercise the tracker without a Discord client in front of it.
 
 ## The one idea everything follows from
 
@@ -27,10 +37,23 @@ attributable. Most of the design falls out of that:
 dotnet build moviebot-acquire.slnx -c Release
 dotnet test
 
+# the consumer, after touching anything public
+dotnet build ../moviebot/moviebot.slnx -c Release
+
 # against the live tracker: the credential comes from the environment, never a file here
 Tracker__Username=... Tracker__Passkey=... \
   src/MovieBot.Acquire.Cli/bin/Release/net10.0/moviebot-acquire search Heat 1995
 ```
+
+The CLI's verbs: `search <title>` and `imdb <tt…>` rank what the tracker holds, `film <id|name>`
+asks the title index what a film is called, `get <title> [--pick N]` starts a download,
+`downloads` reports what is running and `budget` reports the download directory against its
+ceiling.
+
+This library's code runs on this host inside MovieBot's three services: publishing them carries
+`TheKrystalShip.MovieBot.Acquire.dll` into `/opt/moviebot/{api,bot,handoff}`. A change here
+reaches the running system when those are published, and `moviebot/CLAUDE.md` holds that
+procedure.
 
 ## Search invariants
 
@@ -207,3 +230,7 @@ persists it, so the state of that work is kept on the torrent rather than in any
 - Results go to stdout and everything else to stderr, so a search is pipeable.
 - Commit per finished piece of work, including the version bump and CHANGELOG entry, and tag the
   bump `v<version>`.
+- **A change that spans both repositories is one commit in each**, describing that repository's
+  half. Address git with `git -C <repo>`: the two checkouts sit side by side, and a `cd` applies
+  to every command after it in the same shell, so a commit or a tag meant for one lands in the
+  other.
