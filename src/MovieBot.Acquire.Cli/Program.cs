@@ -62,7 +62,7 @@ async Task<int> SearchAsync(string query)
     }
 
     var search = services.GetRequiredService<ReleaseSearch>();
-    return Report(await search.ByTitleAsync(query, cancellation.Token));
+    return Report(await search.ByTextAsync(query, cancellation.Token));
 }
 
 async Task<int> ImdbAsync(string? imdbId)

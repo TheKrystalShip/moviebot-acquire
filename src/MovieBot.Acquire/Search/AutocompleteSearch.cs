@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using TheKrystalShip.MovieBot.Acquire.Imdb;
 
 namespace TheKrystalShip.MovieBot.Acquire.Search;
 
@@ -9,6 +10,21 @@ namespace TheKrystalShip.MovieBot.Acquire.Search;
 /// enough to be truncated for display, and a truncated name cannot be resolved to a release.
 /// </param>
 public sealed record ReleaseChoice(string Label, long TorrentId);
+
+/// <summary>
+/// What to put in front of somebody: the rows, and — when there are none — the sentence saying
+/// why.
+///
+/// A menu that simply comes back empty is indistinguishable from a broken tracker call, and the
+/// two want opposite things from the person reading it. Every reason nothing is on offer is a
+/// normal outcome worth showing: the tracker holds nothing under that name, or holds only
+/// releases too large to take.
+/// </summary>
+/// <param name="Explanation">Null whenever there is something to show.</param>
+public sealed record Suggestions(IReadOnlyList<ReleaseChoice> Choices, string? Explanation)
+{
+    public static readonly Suggestions None = new([], null);
+}
 
 /// <summary>How autocomplete paces itself against the tracker.</summary>
 public sealed class AutocompleteOptions
@@ -75,7 +91,15 @@ public sealed class AutocompleteSearch(
     AutocompleteOptions options,
     ILogger<AutocompleteSearch> logger)
 {
-    private readonly Dictionary<string, IReadOnlyList<Release>> _answered = [];
+    /// <summary>
+    /// One answered query. The film and the reason nothing was offered are held with the releases
+    /// because a narrowed or replayed query shows the same row text and the same explanation as
+    /// the query it was taken from.
+    /// </summary>
+    private sealed record Answer(
+        IReadOnlyList<Release> Releases, ImdbTitle? Film, string? Explanation);
+
+    private readonly Dictionary<string, Answer> _answered = [];
 
     // Every release ever offered, by torrent id. The surface sends back only the value behind a
     // row, so this is what turns that value into the release it stood for. It is kept separately
@@ -91,11 +115,11 @@ public sealed class AutocompleteSearch(
     /// Who is typing. Debouncing is per person: one person mid-word must not suppress another
     /// person's finished query.
     /// </param>
-    public async Task<IReadOnlyList<ReleaseChoice>> SuggestAsync(
+    public async Task<Suggestions> SuggestAsync(
         string partial, string sessionKey, CancellationToken ct)
     {
         var query = (partial ?? "").Trim();
-        if (query.Length < options.MinimumQueryLength) return [];
+        if (query.Length < options.MinimumQueryLength) return Suggestions.None;
 
         var key = Normalize(query);
 
@@ -110,12 +134,12 @@ public sealed class AutocompleteSearch(
         // wait for typing to stop.
         if (LongestAnsweredPrefix(key) is { } prefix)
         {
-            var narrowed = Narrow(prefix.Releases, query);
+            var narrowed = Narrow(prefix.Answer.Releases, query);
             if (narrowed.Count > 0)
             {
                 logger.LogDebug("Narrowed {Prefix} for {Query} without a tracker call.",
                     prefix.Key, key);
-                return Present(narrowed);
+                return Present(prefix.Answer with { Releases = narrowed });
             }
         }
 
@@ -143,10 +167,11 @@ public sealed class AutocompleteSearch(
 
         try
         {
-            var ranked = await search.ByTitleAsync(query, deadline.Token);
+            var ranked = await search.ByTextAsync(query, deadline.Token);
+            var answer = new Answer(ranked.Candidates, ranked.Film, ranked.EmptyExplanation);
 
-            lock (_answered) _answered[key] = ranked.Candidates;
-            return Present(ranked.Candidates);
+            lock (_answered) _answered[key] = answer;
+            return Present(answer);
         }
         catch (OperationCanceledException) when (!ct.IsCancellationRequested)
         {
@@ -183,21 +208,23 @@ public sealed class AutocompleteSearch(
             return _newestPerSession.TryGetValue(sessionKey, out var newest) && newest == mine;
     }
 
-    private (string Key, IReadOnlyList<Release> Releases)? LongestAnsweredPrefix(string key)
+    private (string Key, Answer Answer)? LongestAnsweredPrefix(string key)
     {
         lock (_answered)
         {
             return _answered
                 .Where(e => key.StartsWith(e.Key, StringComparison.Ordinal))
                 .OrderByDescending(e => e.Key.Length)
-                .Select(e => ((string, IReadOnlyList<Release>)?)(e.Key, e.Value))
+                .Select(e => ((string, Answer)?)(e.Key, e.Value))
                 .FirstOrDefault();
         }
     }
 
     /// <summary>The closest answer already held, so a keystroke that cannot ask shows something.</summary>
-    private IReadOnlyList<Release> BestKnown(string key) =>
-        LongestAnsweredPrefix(key) is { } prefix ? Narrow(prefix.Releases, key) : [];
+    private Answer BestKnown(string key) =>
+        LongestAnsweredPrefix(key) is { } prefix
+            ? prefix.Answer with { Releases = Narrow(prefix.Answer.Releases, key) }
+            : new Answer([], null, null);
 
     /// <summary>
     /// Takes the subset of an answer that still matches a longer query, on the words alone: the
@@ -225,24 +252,35 @@ public sealed class AutocompleteSearch(
         lock (_offered) return _offered.GetValueOrDefault(torrentId);
     }
 
-    private IReadOnlyList<ReleaseChoice> Present(IReadOnlyList<Release> releases)
+    private Suggestions Present(Answer answer)
     {
         lock (_offered)
         {
-            foreach (var release in releases)
+            foreach (var release in answer.Releases)
                 _offered[release.TorrentId] = release;
         }
 
-        return releases.Select(r => new ReleaseChoice(Label(r), r.TorrentId)).ToList();
+        if (answer.Releases.Count == 0) return new Suggestions([], answer.Explanation);
+
+        return new Suggestions(
+            answer.Releases.Select(r => new ReleaseChoice(Label(r, answer.Film), r.TorrentId)).ToList(),
+            null);
     }
 
     /// <summary>
     /// A row's text, built to fit rather than trimmed to fit: the surface rejects a label over
     /// its limit outright, and the release name is the part that is expendable.
+    ///
+    /// Where the film was named in the title index and the release calls it something else, both
+    /// names are shown. A row reading only "Huo zhe yan" under a search for "The Furious" looks
+    /// like the wrong film, and there is nothing else on the row to say otherwise.
     /// </summary>
-    private string Label(Release release)
+    private string Label(Release release, ImdbTitle? film)
     {
-        var head = release.Year is { } year ? $"{release.Title} ({year})" : release.Title;
+        var head = film is null
+            ? release.Display
+            : SameName(film, release) ? film.Display : $"{film.Display} · {release.Title}";
+
         var tail = $" · {release.Summary}";
 
         // The identifying half is kept whole and the description gives way, because two rows
@@ -255,6 +293,17 @@ public sealed class AutocompleteSearch(
 
         return head + tail[..(room - 1)] + "…";
     }
+
+    /// <summary>
+    /// Whether the release is already carrying the film's own name, so a row is not made to say
+    /// it twice. Compared on the words alone: punctuation and case are a release name's own,
+    /// and a film released abroad differs by more than either.
+    /// </summary>
+    private static bool SameName(ImdbTitle film, Release release) =>
+        string.Equals(
+            Normalize(film.Title).Replace(" ", ""),
+            Normalize(release.Title).Replace(" ", ""),
+            StringComparison.OrdinalIgnoreCase);
 
     private static string Normalize(string value) =>
         string.Join(' ', value.ToLowerInvariant()

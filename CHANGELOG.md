@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.16.0
+
+A search names the film before it asks the tracker for it.
+
+`IReleaseSearch.ByTextAsync` takes whatever somebody typed, identifies the film in the title
+index, and asks the tracker for that film by id. The tracker names a film the way the country
+that made it named it, so the English name of a film shot elsewhere matches no release at all:
+"The Furious" finds nothing while `tt33311069` finds nine rows named `Huo.zhe.yan`. An id is the
+one thing the two agree on however the film is spelled. Text carrying an id — a pasted link —
+is a film already named and takes the same path without a search. Where the index cannot name a
+film the words are used as before.
+
+Naming the film first is also what makes a half-typed title work: the index answers a prefix,
+being what a search box reads, where matching a release's own words cannot.
+
+`RankedReleases.Film` carries the identified film so a row can show it beside the name the
+release carries, and `AutocompleteSearch.SuggestAsync` returns `Suggestions` — the rows, and the
+sentence saying why there are none.
+
 ## 0.15.0
 
 A retention rule, the clock it runs on, and the tag that exempts a film from it.

@@ -1,3 +1,5 @@
+using TheKrystalShip.MovieBot.Acquire.Imdb;
+
 namespace TheKrystalShip.MovieBot.Acquire.Search;
 
 /// <summary>Why a release was not offered, so an empty menu can explain itself.</summary>
@@ -17,9 +19,15 @@ public enum RejectionReason
 public sealed record RejectedRelease(Release Release, RejectionReason Reason);
 
 /// <summary>The candidates worth offering, and what was dropped to arrive at them.</summary>
+/// <param name="Film">
+/// The film the search settled on, when it was found by name in the title index rather than by
+/// the words of a release. It is what lets a row show the name somebody typed beside the name the
+/// release carries, which for a film released abroad under another name are not the same words.
+/// </param>
 public sealed record RankedReleases(
     IReadOnlyList<Release> Candidates,
-    IReadOnlyList<RejectedRelease> Rejected)
+    IReadOnlyList<RejectedRelease> Rejected,
+    ImdbTitle? Film = null)
 {
     /// <summary>
     /// A sentence naming why nothing is on offer, or null when something is.

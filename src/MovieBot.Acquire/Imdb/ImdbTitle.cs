@@ -17,6 +17,12 @@ public sealed record ImdbTitle
 
     public int? Year { get; init; }
 
+    /// <summary>
+    /// What to call the film. The one spelling of a name and a year written together, so a film
+    /// is not named one way in a menu row and another in the message that follows it.
+    /// </summary>
+    public string Display => Year is { } year ? $"{Title} ({year})" : Title;
+
     /// <summary>Top-billed cast, already written as one line.</summary>
     public string? Starring { get; init; }
 
