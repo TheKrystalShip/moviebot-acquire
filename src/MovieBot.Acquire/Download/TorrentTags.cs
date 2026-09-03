@@ -122,6 +122,30 @@ public static class TorrentTags
             : null;
 
     /// <summary>
+    /// Somebody wants this film to stay. A download wearing it is never pruned, however long it
+    /// has seeded, until somebody takes it off again.
+    ///
+    /// On the torrent rather than in a file of its own, because a keep is only meaningful while
+    /// the torrent exists and every process that decides a download's fate already reads these.
+    /// </summary>
+    public const string Keep = "keep";
+
+    /// <summary>
+    /// Who asked for the film to stay, as an account id after the colon. Anyone may keep a film
+    /// and anyone may let it go, so the name is there to be shown rather than to be checked.
+    /// </summary>
+    public const string KeeperPrefix = "keeper:";
+
+    public static string Keeper(ulong accountId) => $"{KeeperPrefix}{accountId}";
+
+    /// <summary>Reads the account out of a keeper tag, or null when it is not one.</summary>
+    public static ulong? ReadKeeper(string tag) =>
+        tag.StartsWith(KeeperPrefix, StringComparison.Ordinal)
+        && ulong.TryParse(tag[KeeperPrefix.Length..], out var accountId)
+            ? accountId
+            : null;
+
+    /// <summary>
     /// The download still has to be turned into something the player can open. Carried from the
     /// moment it is started and removed only once that work has actually finished, so a download
     /// still wearing it is one whose transcode is owed — whether it has not begun, is running, or

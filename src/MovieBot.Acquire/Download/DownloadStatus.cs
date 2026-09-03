@@ -80,6 +80,19 @@ public sealed record DownloadStatus
     /// </summary>
     public IReadOnlyList<string> Tags { get; init; } = [];
 
+    /// <summary>
+    /// How long the client has actually seeded this, summed over every run.
+    ///
+    /// It is the client's own count and it stops whenever the client is not running or the
+    /// torrent is stopped, which makes it the same clock a private tracker credits seeding time
+    /// on: hours the machine was off do not count anywhere. Zero until the download completes.
+    ///
+    /// The client reports it as of the torrent's last status refresh, and a torrent with no
+    /// traffic at all may not be refreshed for a while, so the figure can read low. Low is the
+    /// safe direction: it delays a prune and never hastens one.
+    /// </summary>
+    public TimeSpan Seeded { get; init; }
+
     public bool IsFinished => State == DownloadState.Complete;
 
     /// <summary>A short line for a chat surface.</summary>

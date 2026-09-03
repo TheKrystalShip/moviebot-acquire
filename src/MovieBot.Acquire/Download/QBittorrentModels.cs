@@ -49,6 +49,12 @@ public sealed record QBittorrentTorrent
 
     [JsonPropertyName("ratio")] public double Ratio { get; init; }
 
+    /// <summary>
+    /// Seconds the client has spent seeding this torrent, summed over every run and kept in its
+    /// resume data. It does not tick while the client is off or the torrent is stopped.
+    /// </summary>
+    [JsonPropertyName("seeding_time")] public long SeedingTime { get; init; }
+
     /// <summary>The client's own comma-separated tag list, which is where this keeps its notes.</summary>
     [JsonPropertyName("tags")] public string Tags { get; init; } = "";
 }

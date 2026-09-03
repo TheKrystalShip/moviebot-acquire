@@ -98,6 +98,39 @@ public sealed class QBittorrentClient(
     public Task RemoveTagAsync(string hash, string tag, CancellationToken ct) =>
         ChangeTagsAsync("api/v2/torrents/removeTags", hash, tag, ct);
 
+    /// <summary>
+    /// Removes a torrent from the client, and its files from disk with it.
+    ///
+    /// The files go through the client rather than being deleted from under it: a torrent whose
+    /// files vanish is reported as missing files and sits in the list as an error forever, and
+    /// the client keeps announcing a torrent it can no longer seed.
+    /// </summary>
+    public async Task DeleteAsync(string hash, CancellationToken ct)
+    {
+        await EnsureSignedInAsync(ct);
+
+        var form = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["hashes"] = hash,
+            ["deleteFiles"] = "true",
+        });
+
+        try
+        {
+            using var response = await http.PostAsync("api/v2/torrents/delete", form, ct);
+            if (!response.IsSuccessStatusCode)
+                throw new QBittorrentException(
+                    $"The torrent client answered {(int)response.StatusCode} deleting a torrent.");
+
+            logger.LogInformation("Removed {Hash} and its files from the torrent client.", hash);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
+                                   && !ct.IsCancellationRequested)
+        {
+            throw new QBittorrentException("The torrent client could not be reached.", ex);
+        }
+    }
+
     private async Task ChangeTagsAsync(string endpoint, string hash, string tag, CancellationToken ct)
     {
         await EnsureSignedInAsync(ct);
@@ -262,6 +295,7 @@ public sealed class QBittorrentClient(
         Seeds = torrent.Seeds,
         Tags = torrent.Tags
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
+        Seeded = TimeSpan.FromSeconds(Math.Max(0, torrent.SeedingTime)),
     };
 
     /// <summary>

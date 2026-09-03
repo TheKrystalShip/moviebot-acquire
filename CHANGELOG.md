@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.15.0
+
+A retention rule, the clock it runs on, and the tag that exempts a film from it.
+
+`DownloadStatus.Seeded` is the client's own seeding time: it counts only while the client runs
+and the torrent is active, and it survives restarts in the client's resume data, which makes it
+the same clock a private tracker credits. `Retention` says whether a download has seeded for the
+configured window and how long it has left, and never says yes below a floor of the tracker's
+minimum plus a margin; `RetentionOptions` refuses a window under that floor at startup.
+`TorrentTags.Keep` and `TorrentTags.Keeper` mark a film somebody wants to stay, and
+`AcquisitionService.RemoveAsync` takes a download out of the client and off the disk through it.
+
 ## 0.14.0
 
 Two more notes a torrent carries: the room a film is to play in, and the id it went under in the

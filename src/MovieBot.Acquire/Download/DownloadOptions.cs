@@ -28,9 +28,9 @@ public sealed class DownloadOptions
     /// <summary>
     /// The most the download directory may hold, in gibibytes.
     ///
-    /// It is a real ceiling rather than a guideline: a private tracker expects a completed
-    /// download to keep seeding, so nothing here is deleted on a schedule and the directory only
-    /// ever grows until somebody removes a film.
+    /// It is a real ceiling rather than a guideline. A completed download keeps seeding until
+    /// the retention rule lets it go, so between one film being pruned and the next the directory
+    /// only grows, and a run of requests inside one window has to fit under this.
     /// </summary>
     public double MaximumGiB { get; set; } = 300;
 

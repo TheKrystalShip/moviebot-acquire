@@ -93,6 +93,13 @@ public sealed class AcquisitionService(
         torrents.AddTagAsync(hash, tag, ct);
 
     /// <summary>
+    /// Takes a download out of the client and off the disk. The films it was turned into are
+    /// whoever calls this to deal with; this only knows about the source.
+    /// </summary>
+    public Task RemoveAsync(string hash, CancellationToken ct) =>
+        torrents.DeleteAsync(hash, ct);
+
+    /// <summary>
     /// How many bytes of one file in a download are readable from its start without a gap.
     ///
     /// For anything reading the file while it is still arriving: the file is its full length from

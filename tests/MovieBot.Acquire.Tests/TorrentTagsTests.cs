@@ -29,6 +29,19 @@ public class TorrentTagsTests
         Assert.Null(TorrentTags.ReadRequester(TorrentTags.Notify(1234567890UL)));
 
     [Fact]
+    public void A_keeper_survives_the_round_trip() =>
+        Assert.Equal(214987225747587072UL,
+            TorrentTags.ReadKeeper(TorrentTags.Keeper(214987225747587072UL)));
+
+    [Fact]
+    public void A_keeper_tag_is_not_read_as_a_requester() =>
+        Assert.Null(TorrentTags.ReadRequester(TorrentTags.Keeper(1234567890UL)));
+
+    [Fact]
+    public void A_requester_tag_is_not_read_as_a_keeper() =>
+        Assert.Null(TorrentTags.ReadKeeper(TorrentTags.Requester(1234567890UL)));
+
+    [Fact]
     public void A_progress_message_survives_the_round_trip()
     {
         var tag = TorrentTags.Progress(385731869163126784UL, 1122334455667788990UL);

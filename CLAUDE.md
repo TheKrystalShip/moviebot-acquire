@@ -131,11 +131,38 @@ only thing that talks to it.
   total drifts the moment somebody deletes a film by hand, and it drifts silently: the first
   sign is a refused download with the disk half empty, or a full volume under a budget that says
   there is room.
-- **A completed download keeps seeding.** A private tracker expects it, so nothing is deleted on
-  a schedule and the directory only grows until somebody removes a film. The size ceiling on a
-  release is a disk budget, not a bandwidth one.
+- **A completed download keeps seeding until retention lets it go.** A private tracker expects
+  the seeding, and the retention rule is what decides when enough of it has been done. The size
+  ceiling on a release is a disk budget, not a bandwidth one.
 - **The volume's own free space bounds the budget.** Whichever runs out first is the real
   headroom, and the volume is the one that produces a half-written file rather than a refusal.
+
+## Retention invariants
+
+A downloaded film stays for a window of seeding and is then let go, unless somebody keeps it.
+`Retention` answers whether a download is due and how long it has left; who keeps, who prunes and
+what a room holds are the callers' business.
+
+- **The clock is the client's seeding time, never the calendar.** The tracker credits seeding by
+  the announces it receives, which happen only while the client runs and the torrent is active,
+  and the client's own `seeding_time` counts the same stretches and persists in its resume data.
+  A week is a week of seeding: hours the machine was off count nowhere.
+- **The client's figure can read low, never high.** It is reported as of the torrent's last
+  status refresh, and a torrent with no traffic at all may go unrefreshed for a while; an
+  announce or a peer brings it up to date. Low delays a prune and never hastens one, which is
+  the direction a proxy for a penalised minimum has to err in.
+- **The floor is the tracker's minimum plus a margin, and nothing goes under it.** The client's
+  clock runs ahead of the tracker's by whatever announces did not land, always in the direction
+  of the tracker crediting less. The margin absorbs that; the window sits days above the floor
+  so the two thresholds cannot meet.
+- **The rule holds the floor on its own, and the options refuse to be set under it.** A window
+  shorter than the floor would either be ignored, which makes it a lie, or honoured, which earns
+  the penalty the floor exists to avoid. The options refuse to start that way and the rule refuses
+  again on every answer, for a process that got past validation.
+- **The tracker's own figure is not available.** Its API offers two actions, both searches, and
+  the snatchlist that shows the remaining time is a page behind the login cookie. The client's
+  clock is the honest proxy, used with the margin above, and it is never presented as the
+  tracker's number.
 
 ## Download invariants
 
@@ -165,6 +192,10 @@ persists it, so the state of that work is kept on the torrent rather than in any
   every pass.
 - **A failure gets its own tag rather than leaving the work tag alone.** Left alone, a failure is
   indistinguishable from work still in progress, and whoever is waiting is told nothing at all.
+- **A keep is a tag, with the keeper beside it.** A keep is only meaningful while the torrent
+  exists, and every process that decides a download's fate already reads its tags, so a file of
+  kept films would be a second place to look that could disagree with the first. `keeper:<id>`
+  is there to be shown, not checked: anyone may keep a film and anyone may let it go.
 
 ## Conventions
 

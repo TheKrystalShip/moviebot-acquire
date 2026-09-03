@@ -53,6 +53,15 @@ public static class AcquireServiceCollectionExtensions
 
         services.AddSingleton<AcquisitionService>();
 
+        // Validated at startup because the failure mode of a bad window is a tracker penalty.
+        services.AddOptions<RetentionOptions>()
+            .Bind(configuration.GetSection(RetentionOptions.Section))
+            .Validate(o => o.IsCoherent,
+                "Retention:SeedDays must be at least Retention:TrackerMinimumHours plus "
+                + "Retention:MarginHours, and none of them may be negative.")
+            .ValidateOnStart();
+        services.AddSingleton<Retention>();
+
         services.AddHttpClient<TrackerClient>((sp, http) =>
         {
             var options = sp.GetRequiredService<IOptions<TrackerOptions>>().Value;
