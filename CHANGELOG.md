@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.1
+
+A person is not a film. The title index answers a search with people beside titles, and a person
+carries no kind, which `ImdbTitle.IsFeature` read as a film: "Pirates of the Caribbean" listed Rex
+Smith, an actor in The Pirates of Penzance, among the films. A missing kind now counts as a film only
+under a title id.
+
 ## 0.16.0
 
 A search names the film before it asks the tracker for it.

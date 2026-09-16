@@ -35,9 +35,16 @@ public sealed record ImdbTitle
     /// <summary>What kind of thing this is — a feature, an episode, a series.</summary>
     public string? Kind { get; init; }
 
-    /// <summary>Whether this is a film rather than a series or an episode of one.</summary>
+    /// <summary>
+    /// Whether this is a film rather than a series, an episode of one, or a person.
+    /// </summary>
+    /// <remarks>
+    /// The index returns people beside titles, with no kind at all, so a missing kind is only read as
+    /// a film when the id is a title's.
+    /// </remarks>
     public bool IsFeature =>
-        Kind is null || Kind.Contains("movie", StringComparison.OrdinalIgnoreCase);
+        ImdbId.StartsWith("tt", StringComparison.Ordinal)
+        && (Kind is null || Kind.Contains("movie", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// The poster no wider than a number of pixels.

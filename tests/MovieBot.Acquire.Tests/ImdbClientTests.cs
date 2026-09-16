@@ -126,6 +126,15 @@ public sealed class ImdbClientTests
         Assert.Equal(expected, new ImdbTitle { ImdbId = "tt1", Title = "x", Kind = kind }.IsFeature);
     }
 
+    /// <summary>
+    /// The index answers a search with people beside titles, and a person carries no kind at all.
+    /// </summary>
+    [Fact]
+    public void A_person_is_not_a_film()
+    {
+        Assert.False(new ImdbTitle { ImdbId = "nm0809688", Title = "Rex Smith" }.IsFeature);
+    }
+
     /// <summary>A series that happens to be named like the film is not the film.</summary>
     [Fact]
     public async Task A_search_offers_no_series()
