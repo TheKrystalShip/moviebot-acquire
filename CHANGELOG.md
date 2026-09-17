@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.16.2
+
+A subtitle search survives a row the index left incomplete.
+
+OpenSubtitles writes `null` for an uploader flag that was never set, and the wire shapes read those
+flags as plain `bool`. A search is one document, so a single row with a null `from_trusted` failed
+the whole response: a film got no subtitles at all because one stranger's upload said nothing about
+itself, and the refusal reached the API as an unhandled exception rather than an empty list.
+
+Every scalar on those shapes is nullable now, including the ones the service documents as always
+present, and what each absence means is decided once where they are mapped: an unset flag is the
+flag not set, an undeclared frame rate is zero, an undeclared disc count is one. A row naming no
+file to fetch is still no candidate, tested positively because a nullable id is not less than one.
+
 ## 0.16.1
 
 A person is not a film. The title index answers a search with people beside titles, and a person

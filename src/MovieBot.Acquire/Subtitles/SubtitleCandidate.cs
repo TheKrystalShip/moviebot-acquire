@@ -48,24 +48,28 @@ public sealed record SubtitleCandidate
         var a = item.Attributes;
         var file = a?.Files.FirstOrDefault();
 
-        // A row with no file cannot be downloaded, so it is not a candidate for anything.
-        if (a is null || file is null || file.FileId <= 0) return null;
+        // A row with no file cannot be downloaded, so it is not a candidate for anything. The test
+        // is positive because the id is nullable, and a comparison against a missing one is false.
+        if (a is null || file is null || file.FileId is not > 0) return null;
 
         return new SubtitleCandidate
         {
-            FileId = file.FileId,
+            FileId = file.FileId.Value,
             Release = a.Release ?? "",
             FileName = file.FileName,
             Language = a.Language ?? "",
-            Fps = a.Fps,
-            DownloadCount = a.DownloadCount,
-            HearingImpaired = a.HearingImpaired,
-            ForeignPartsOnly = a.ForeignPartsOnly,
-            FromTrusted = a.FromTrusted,
-            MachineTranslated = a.MachineTranslated,
-            AiTranslated = a.AiTranslated,
+            // An absent flag is the flag not set. The index sends null for one an uploader left
+            // alone, and carrying that as a third state through everything that judges a subtitle
+            // would say nothing more than false already says.
+            Fps = a.Fps ?? 0,
+            DownloadCount = a.DownloadCount ?? 0,
+            HearingImpaired = a.HearingImpaired ?? false,
+            ForeignPartsOnly = a.ForeignPartsOnly ?? false,
+            FromTrusted = a.FromTrusted ?? false,
+            MachineTranslated = a.MachineTranslated ?? false,
+            AiTranslated = a.AiTranslated ?? false,
             HashMatch = a.MovieHashMatch ?? false,
-            CdCount = a.CdCount > 0 ? a.CdCount : 1,
+            CdCount = a.CdCount is > 0 ? a.CdCount.Value : 1,
             UploadedAt = a.UploadDate,
             ImdbId = Acquire.ImdbId.ToTag(a.Feature?.ImdbId)
         };
