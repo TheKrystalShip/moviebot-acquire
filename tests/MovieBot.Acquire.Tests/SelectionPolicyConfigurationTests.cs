@@ -24,6 +24,22 @@ public class SelectionPolicyConfigurationTests
         Assert.Contains("Selection:AllowedCategories", refusal.Message);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void A_blank_category_is_refused(string blank)
+    {
+        using var services = Build(new()
+        {
+            ["Selection:AllowedCategories:0"] = "Movies HD",
+            ["Selection:AllowedCategories:1"] = blank,
+        });
+
+        var refusal = Assert.Throws<OptionsValidationException>(
+            () => services.GetRequiredService<SelectionPolicy>());
+        Assert.Contains("empty entry", refusal.Message);
+    }
+
     [Fact]
     public void The_categories_come_from_the_host_configuration()
     {

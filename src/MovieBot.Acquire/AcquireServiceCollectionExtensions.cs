@@ -22,12 +22,18 @@ public static class AcquireServiceCollectionExtensions
         services.Configure<DownloadOptions>(configuration.GetSection(DownloadOptions.Section));
 
         // Validated at startup because an empty allow-list filters nothing: a host that forgot
-        // the tracker's categories would offer soundtracks beside the films, not fail.
+        // the tracker's categories would offer soundtracks beside the films, not fail. A blank
+        // entry is refused the same way. It is what an env file line left as `…__0=` binds to,
+        // and it matches no release, so a host holding one would find nothing on the tracker
+        // and say nothing about why.
         services.AddOptions<SelectionPolicy>()
             .Bind(configuration.GetSection(SelectionPolicy.Section))
             .Validate(p => p.AllowedCategories.Length > 0,
                 "Selection:AllowedCategories names no tracker category; set it beside the tracker's "
                 + "address in the host's configuration.")
+            .Validate(p => p.AllowedCategories.All(c => !string.IsNullOrWhiteSpace(c)),
+                "Selection:AllowedCategories holds an empty entry; give every "
+                + "Selection__AllowedCategories__N a tracker category name or remove the line.")
             .ValidateOnStart();
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<SelectionPolicy>>().Value);
 

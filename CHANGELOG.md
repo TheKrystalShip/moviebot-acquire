@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.19.1
+
+A blank tracker category is refused at startup, like a missing one. An env file line left as
+`Selection__AllowedCategories__0=` binds to an empty name that matches no release, so a host holding
+one started normally and found nothing on the tracker without saying why; `AddAcquire` now names the
+empty entry and refuses to start.
+
 ## 0.19.0
 
 Releases. Pushing a tag `v<version>` that matches the newest CHANGELOG entry builds the
