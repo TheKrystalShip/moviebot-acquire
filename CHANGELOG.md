@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.20.0
+
+`MovieBotSettings` locates and layers `moviebot.settings.json`, the settings file every MovieBot
+program shares: the copy shipped beside the program holds the defaults, and the first
+`moviebot/moviebot.settings.json` under `$XDG_CONFIG_HOME` (default `~/.config`) or `$XDG_CONFIG_DIRS`
+(default `/etc/xdg`) overrides it. Both sit underneath every source a host adds, so the environment
+overrides single keys. `Describe()` names the files read, for a startup log line. The CLI reads the
+same file, so run as the services' account it sees their download root, torrent client and
+selection policy; its own `appsettings.json` is gone and its quiet log levels are set in code. The
+XDG user-directories lookup for the download root resolves `$XDG_CONFIG_HOME` through the same rule.
+
 ## 0.19.1
 
 A blank tracker category is refused at startup, like a missing one. An env file line left as

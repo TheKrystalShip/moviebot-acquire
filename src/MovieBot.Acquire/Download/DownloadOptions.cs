@@ -77,9 +77,8 @@ public sealed class DownloadOptions
     private static string? ReadUserDirectory(string home, string key)
     {
         var path = Path.Combine(
-            Environment.GetEnvironmentVariable("XDG_CONFIG_HOME") is { Length: > 0 } configHome
-                ? configHome
-                : Path.Combine(home, ".config"),
+            Configuration.MovieBotSettings.ConfigHome(Environment.GetEnvironmentVariable)
+                ?? Path.Combine(home, ".config"),
             "user-dirs.dirs");
 
         try

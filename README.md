@@ -79,7 +79,11 @@ so it identifies the account in anything downloaded with it. It is held by `Trac
 a `Release` carries a torrent id rather than a download link, so nothing that reaches a log or a
 chat surface ever contains it.
 
-Everything else has defaults in `appsettings.json`:
+Everything else is read from `moviebot.settings.json`, the settings file MovieBot and this CLI
+share. The CLI looks for it at `$XDG_CONFIG_HOME/moviebot/moviebot.settings.json` (by default
+`~/.config/moviebot/`), then under `moviebot/` in each of `$XDG_CONFIG_DIRS` (by default
+`/etc/xdg`). Run as the account MovieBot's services use, it therefore reads their settings. Any key
+the file leaves out takes the library's default:
 
 ```json
 "Selection": {
@@ -102,6 +106,7 @@ Everything else has defaults in `appsettings.json`:
 }
 ```
 
+The environment overrides any single key, written `Section__Key` (`Download__MaximumGiB=500`).
 An empty `Download.Root` means `~/Downloads/Movies`. Retention is set under `Retention`:
 `SeedDays` (default 7), and the tracker's minimum seeding time `TrackerMinimumHours` (default 48)
 plus a safety `MarginHours` (default 12), below which nothing is ever removed.
@@ -179,6 +184,7 @@ being watched or transcoded.
 src/MovieBot.Acquire/          the library
   Tracker/                     the tracker's member API, and the only holder of the passkey
   Search/                      query parsing, release parsing, selection, ranking, autocomplete
+  Configuration/               where moviebot.settings.json lives, and how it is layered
   Download/                    qBittorrent client, disk budget, retention, torrent tags
   Imdb/                        film lookup by IMDb id
   Subtitles/                   OpenSubtitles client and subtitle checks

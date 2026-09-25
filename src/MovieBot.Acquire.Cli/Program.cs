@@ -3,14 +3,24 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using TheKrystalShip.MovieBot.Acquire;
+using TheKrystalShip.MovieBot.Acquire.Configuration;
 using TheKrystalShip.MovieBot.Acquire.Download;
 using TheKrystalShip.MovieBot.Acquire.Tracker;
 using TheKrystalShip.MovieBot.Acquire.Imdb;
 using TheKrystalShip.MovieBot.Acquire.Search;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+// The same settings file the MovieBot services read, so `sudo -u <service account> moviebot-acquire`
+// sees the download root, the torrent client and the selection policy the services use.
+builder.Configuration.AddMovieBotSettings();
 builder.Configuration.AddUserSecrets<Program>(optional: true);
 builder.Services.AddAcquire(builder.Configuration);
+
+// An interactive command says only what went wrong, and what this library reports, unless the
+// settings file asks for more.
+builder.Logging.SetMinimumLevel(LogLevel.Warning);
+builder.Logging.AddFilter("TheKrystalShip", LogLevel.Information);
 
 // An interactive command writes to stderr so the tables on stdout stay pipeable.
 builder.Logging.ClearProviders();
