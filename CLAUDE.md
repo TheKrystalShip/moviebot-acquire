@@ -49,7 +49,13 @@ dotnet build ../moviebot/moviebot.slnx -c Release
 # against the live tracker: the credential comes from the environment, never a file here
 Tracker__BaseUrl=... Tracker__Username=... Tracker__Passkey=... \
   src/MovieBot.Acquire.Cli/bin/Release/net10.0/moviebot-acquire search Heat 1995
+
+scripts/package-release.sh        # the release archive, as the release workflow builds it
 ```
+
+A tag `v<version>` matching the newest CHANGELOG heading publishes the CLI as a GitHub release.
+**MovieBot's CI and releases check out this repository's `main`**, so a push here that changes a
+public type is a red build there until MovieBot's half is pushed too: push the two together.
 
 The CLI's verbs: `search <title>` and `imdb <tt…>` rank what the tracker holds, `film <id|name>`
 asks the title index what a film is called, `get <title> [--pick N]` starts a download,

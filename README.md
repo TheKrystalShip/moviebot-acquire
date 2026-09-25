@@ -33,6 +33,13 @@ relative path, so the two repositories are checked out side by side and move tog
 
 ## Getting started
 
+Each [release](https://github.com/TheKrystalShip/moviebot-acquire/releases) carries the CLI as one
+self-contained linux-x64 executable, in `moviebot-acquire-linux-x64.tar.gz`. MovieBot's own
+releases include everything MovieBot needs from this library, so deploying MovieBot does not need
+this download.
+
+To build from source:
+
 ```bash
 dotnet build moviebot-acquire.slnx -c Release
 dotnet test
@@ -177,9 +184,16 @@ src/MovieBot.Acquire/          the library
   Subtitles/                   OpenSubtitles client and subtitle checks
 src/MovieBot.Acquire.Cli/      the moviebot-acquire CLI
 tests/MovieBot.Acquire.Tests/  unit tests
+scripts/                       release packaging, version
 ```
 
 The parser tests run against release names the tracker actually returned.
+
+## Releases
+
+Pushing a tag `v<version>` that matches the newest entry in `CHANGELOG.md` builds the CLI with
+`scripts/package-release.sh` and publishes it as a GitHub release. Every push to `main` and every
+pull request is built and tested.
 
 ## License
 

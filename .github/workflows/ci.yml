@@ -1,0 +1,27 @@
+# Builds and tests every push to main and every pull request.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Build
+        run: dotnet build moviebot-acquire.slnx -c Release --nologo
+
+      - name: Test
+        run: dotnet test moviebot-acquire.slnx -c Release --no-build --nologo

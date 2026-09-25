@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.0
+
+Releases. Pushing a tag `v<version>` that matches the newest CHANGELOG entry builds the
+`moviebot-acquire` CLI as one self-contained linux-x64 executable and publishes it, with its
+settings file and a checksum, as `moviebot-acquire-linux-x64.tar.gz` on a GitHub release.
+`scripts/package-release.sh` builds the same archive locally. CI builds and tests every push to
+`main` and every pull request.
+
 ## 0.18.0
 
 The tracker's category names are host configuration too. `Selection:AllowedCategories` has no
