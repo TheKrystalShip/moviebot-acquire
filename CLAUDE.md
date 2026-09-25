@@ -52,7 +52,7 @@ ceiling.
 
 This library's code runs on this host inside MovieBot's three services: publishing them carries
 `TheKrystalShip.MovieBot.Acquire.dll` into `/opt/moviebot/{api,bot,handoff}`. A change here
-reaches the running system when those are published, and `moviebot/CLAUDE.md` holds that
+reaches the running system when those are published, and `moviebot/deploy/CLAUDE.md` holds that
 procedure.
 
 ## Search invariants
