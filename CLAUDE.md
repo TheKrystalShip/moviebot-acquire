@@ -31,9 +31,11 @@ attributable. Most of the design falls out of that:
   in an embed and to hand to a select menu without thinking about it.
 - `TrackerTorrent` is the edge of the system. Nothing outside `Tracker/` holds one.
 - **Which tracker this is lives in the host's configuration, never in the repository.**
-  `Tracker:BaseUrl` has no default and nothing here names the site: the address is set beside the
-  account, in the same environment file. A name, a domain or a URL for it appearing in code, a
-  test, a doc or a commit message is a leak of the same kind as the passkey.
+  `Tracker:BaseUrl` and `Selection:AllowedCategories` have no defaults and nothing here names the
+  site: the address and the tracker's own category names are set beside the account, in the same
+  environment file. A name, a domain, a URL or a category spelling of it appearing in code, a test,
+  a doc or a commit message is a leak of the same kind as the passkey; tests use `tracker.invalid`
+  and generic categories such as `Movies HD`.
 
 ## Commands
 

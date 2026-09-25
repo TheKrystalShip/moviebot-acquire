@@ -6,7 +6,7 @@ namespace TheKrystalShip.MovieBot.Acquire.Tests;
 
 public class ReleaseRankerTests
 {
-    private static readonly SelectionPolicy Policy = new();
+    private static readonly SelectionPolicy Policy = new() { AllowedCategories = ["Movies HD", "Movies 4K"] };
 
     private static Release Release(
         string name, string category = "Movies HD", int seeders = 20,

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.18.0
+
+The tracker's category names are host configuration too. `Selection:AllowedCategories` has no
+default, since the names are the tracker's own taxonomy, and `AddAcquire` validates it at startup:
+an empty list filters nothing, so a host that forgot it would offer soundtracks beside the films
+rather than fail. The tests use generic categories.
+
+**Operational:** a host sets `Selection__AllowedCategories__0`, `__1` and so on in its environment
+file before running this version.
+
 ## 0.17.0
 
 Which tracker this is lives in the host's configuration, never in the repository. The client, its

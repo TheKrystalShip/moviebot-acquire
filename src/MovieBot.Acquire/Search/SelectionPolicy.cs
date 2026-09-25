@@ -32,20 +32,15 @@ public sealed class SelectionPolicy
     public int MinimumSeeders { get; set; } = 1;
 
     /// <summary>
-    /// The tracker categories a film may come from. A title search matches soundtracks and other
-    /// non-film categories, so the filter is an allow-list rather than a set of exclusions.
+    /// The tracker categories a film may come from, spelled as the tracker spells them. A title
+    /// search matches soundtracks and other non-film categories, so the filter is an allow-list
+    /// rather than a set of exclusions; an empty list filters nothing.
+    ///
+    /// It has no default because the names are the tracker's own taxonomy, and which tracker this
+    /// is belongs to the host's configuration. <see cref="AcquireServiceCollectionExtensions.AddAcquire"/>
+    /// refuses to start without it, so a host that forgot it does not quietly offer soundtracks.
     /// </summary>
-    public string[] AllowedCategories { get; set; } =
-    [
-        "Movies 4K",
-        "Movies 4K Blu-Ray",
-        "Movies Blu-Ray",
-        "Movies HD",
-        "Movies HD",
-        "Movies SD",
-        "Movies DVD",
-        "Movies DVD",
-    ];
+    public string[] AllowedCategories { get; set; } = [];
 
     /// <summary>
     /// Whether stereoscopic releases are offered. They are not, by default: the player has no

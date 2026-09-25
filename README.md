@@ -28,7 +28,9 @@ site is restyled.
 
 The tracker is configured through `Tracker__BaseUrl` (the site's root), `Tracker__Username` and
 `Tracker__Passkey`, in the environment or in user-secrets. None is ever read from a file in this
-repository: which tracker this is belongs to the host, beside the account.
+repository: which tracker this is belongs to the host, beside the account. So do the tracker's
+category names a film may come from, as `Selection__AllowedCategories__0`, `__1` and so on; a host
+without them refuses to start.
 
 The passkey is a credential twice over: it authenticates the API, and the tracker embeds it in
 every download URL it hands back, which is what makes a leak attributable to the account. It

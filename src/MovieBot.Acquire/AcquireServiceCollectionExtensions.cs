@@ -21,12 +21,15 @@ public static class AcquireServiceCollectionExtensions
         services.Configure<TrackerOptions>(configuration.GetSection(TrackerOptions.Section));
         services.Configure<DownloadOptions>(configuration.GetSection(DownloadOptions.Section));
 
-        services.AddSingleton(_ =>
-        {
-            var policy = new SelectionPolicy();
-            configuration.GetSection(SelectionPolicy.Section).Bind(policy);
-            return policy;
-        });
+        // Validated at startup because an empty allow-list filters nothing: a host that forgot
+        // the tracker's categories would offer soundtracks beside the films, not fail.
+        services.AddOptions<SelectionPolicy>()
+            .Bind(configuration.GetSection(SelectionPolicy.Section))
+            .Validate(p => p.AllowedCategories.Length > 0,
+                "Selection:AllowedCategories names no tracker category; set it beside the tracker's "
+                + "address in the host's configuration.")
+            .ValidateOnStart();
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<SelectionPolicy>>().Value);
 
         services.AddSingleton(_ =>
         {
