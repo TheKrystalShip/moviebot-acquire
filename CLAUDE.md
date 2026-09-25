@@ -30,6 +30,10 @@ attributable. Most of the design falls out of that:
 - `Release` carries a torrent id, not a link. That is what makes a `Release` safe to log, to put
   in an embed and to hand to a select menu without thinking about it.
 - `TrackerTorrent` is the edge of the system. Nothing outside `Tracker/` holds one.
+- **Which tracker this is lives in the host's configuration, never in the repository.**
+  `Tracker:BaseUrl` has no default and nothing here names the site: the address is set beside the
+  account, in the same environment file. A name, a domain or a URL for it appearing in code, a
+  test, a doc or a commit message is a leak of the same kind as the passkey.
 
 ## Commands
 
@@ -41,7 +45,7 @@ dotnet test
 dotnet build ../moviebot/moviebot.slnx -c Release
 
 # against the live tracker: the credential comes from the environment, never a file here
-Tracker__Username=... Tracker__Passkey=... \
+Tracker__BaseUrl=... Tracker__Username=... Tracker__Passkey=... \
   src/MovieBot.Acquire.Cli/bin/Release/net10.0/moviebot-acquire search Heat 1995
 ```
 

@@ -26,8 +26,9 @@ site is restyled.
 
 ## Configuration
 
-The account is configured through `Tracker__Username` and `Tracker__Passkey`, in the
-environment or in user-secrets. Neither is ever read from a file in this repository.
+The tracker is configured through `Tracker__BaseUrl` (the site's root), `Tracker__Username` and
+`Tracker__Passkey`, in the environment or in user-secrets. None is ever read from a file in this
+repository: which tracker this is belongs to the host, beside the account.
 
 The passkey is a credential twice over: it authenticates the API, and the tracker embeds it in
 every download URL it hands back, which is what makes a leak attributable to the account. It

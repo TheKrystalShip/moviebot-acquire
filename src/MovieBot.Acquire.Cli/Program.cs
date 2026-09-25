@@ -241,8 +241,9 @@ int Help()
           downloads          what is downloading now
           budget             what the download directory holds against its ceiling
 
-        The account is configured through Tracker__Username and Tracker__Passkey, in the
-        environment or in user-secrets. Neither is ever read from the repository.
+        The tracker is configured through Tracker__BaseUrl, Tracker__Username and
+        Tracker__Passkey, in the environment or in user-secrets. None is ever read from the
+        repository.
         """);
     return 0;
 }

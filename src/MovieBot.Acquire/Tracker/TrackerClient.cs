@@ -31,9 +31,13 @@ public sealed class TrackerClient(
 
     private sealed record CacheEntry(IReadOnlyList<TrackerTorrent> Rows, DateTimeOffset Expires);
 
-    /// <summary>Whether the client has been given an identity to call with.</summary>
+    /// <summary>Whether the client has been given a tracker and an identity to call it with.</summary>
     public bool IsConfigured =>
-        !string.IsNullOrWhiteSpace(_options.Username) && !string.IsNullOrWhiteSpace(_options.Passkey);
+        !string.IsNullOrWhiteSpace(_options.BaseUrl)
+        && !string.IsNullOrWhiteSpace(_options.Username)
+        && !string.IsNullOrWhiteSpace(_options.Passkey);
+
+    private const string NotConfigured = "The tracker has no address, username and passkey configured.";
 
     /// <summary>Searches by title text, the way somebody types a film's name.</summary>
     public Task<IReadOnlyList<TrackerTorrent>> SearchByNameAsync(string query, CancellationToken ct) =>
@@ -50,7 +54,7 @@ public sealed class TrackerClient(
         string type, string query, CancellationToken ct)
     {
         if (!IsConfigured)
-            throw new TrackerException("The tracker has no username and passkey configured.");
+            throw new TrackerException(NotConfigured);
 
         if (string.IsNullOrWhiteSpace(query))
             return [];
@@ -99,14 +103,14 @@ public sealed class TrackerClient(
     public async Task<byte[]> DownloadTorrentFileAsync(long torrentId, CancellationToken ct)
     {
         if (!IsConfigured)
-            throw new TrackerException("The tracker has no username and passkey configured.");
+            throw new TrackerException(NotConfigured);
 
         await _gate.WaitAsync(ct);
         try
         {
             await PaceAsync(ct);
 
-            var url = "https://tracker.invalid/download.php"
+            var url = Endpoint("download.php")
                       + $"?id={torrentId}&passkey={Uri.EscapeDataString(_options.Passkey)}";
 
             using var response = await http.GetAsync(url, ct);
@@ -217,8 +221,10 @@ public sealed class TrackerClient(
         foreach (var (name, value) in parameters)
             query.Add($"{name}={Uri.EscapeDataString(value)}");
 
-        return $"{_options.BaseUrl}?{string.Join('&', query)}";
+        return $"{Endpoint("api.php")}?{string.Join('&', query)}";
     }
+
+    private string Endpoint(string script) => $"{_options.BaseUrl.TrimEnd('/')}/{script}";
 
     /// <summary>
     /// Holds calls apart by the configured interval. The gate is already held by the caller, so

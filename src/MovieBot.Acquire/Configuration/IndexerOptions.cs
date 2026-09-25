@@ -7,8 +7,13 @@ public sealed class TrackerOptions
 {
     public const string Section = "Tracker";
 
-    /// <summary>The API endpoint. Every action is a query string against this one URL.</summary>
-    public string BaseUrl { get; set; } = "https://tracker.invalid/api.php";
+    /// <summary>
+    /// The site's root, such as <c>https://tracker.example/</c>. The API is <c>api.php</c> under it,
+    /// where every action is a query string against that one URL, and a torrent file is
+    /// <c>download.php</c> under it. It has no default: which tracker this is belongs to the host's
+    /// configuration, beside the account.
+    /// </summary>
+    public string BaseUrl { get; set; } = "";
 
     /// <summary>The account name. Paired with the passkey; the account password is never used.</summary>
     public string Username { get; set; } = "";

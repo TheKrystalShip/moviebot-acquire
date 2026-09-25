@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.17.0
+
+Which tracker this is lives in the host's configuration, never in the repository. The client, its
+wire shapes and its options are `TrackerClient`, `TrackerTorrent` and `TrackerOptions` in
+`TheKrystalShip.MovieBot.Acquire.Tracker`, bound from the `Tracker` section. `Tracker:BaseUrl` is
+the site's root and has no default; the API and the torrent download are both built under it, and a
+client without it is not configured.
+
+**Operational:** a host sets `Tracker__BaseUrl`, `Tracker__Username` and `Tracker__Passkey` in its
+environment file before running this version.
+
 ## 0.16.2
 
 A subtitle search survives a row the index left incomplete.
