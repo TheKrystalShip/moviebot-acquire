@@ -24,6 +24,31 @@ public class ReleaseParserTests
         Assert.Equal(2017, release.Year);
     }
 
+    [Theory]
+    [InlineData("Stardust 2007 1080p BluRay DD5.1 Hi10P x264-DON", true)]
+    [InlineData("Heat.1995.1080p.BluRay.10bit.x264-GROUP", true)]
+    [InlineData("Heat.1995.1080p.BluRay.10bit.x265-GROUP", false)]
+    [InlineData("Heat.1995.1080p.BluRay.10-bit.HEVC-GROUP", false)]
+    [InlineData("Heat.1995.1080p.BluRay.DD5.1.x264-AMIABLE", false)]
+    public void Reads_10_bit_H264_and_only_10_bit_H264_as_Hi10P(string name, bool expected)
+    {
+        // 10-bit HEVC decodes on the GPU; only 10-bit H.264 has to be decoded on the processor.
+        var release = Parse(name);
+
+        Assert.Equal(expected, release.IsHighBitDepthAvc);
+        Assert.Equal(Resolution.Hd1080, release.Resolution);
+    }
+
+    [Fact]
+    public void Keeps_the_title_whole_ahead_of_a_Hi10P_marker()
+    {
+        var release = Parse("Stardust 2007 1080p BluRay DD5.1 Hi10P x264-DON");
+
+        Assert.Equal("Stardust", release.Title);
+        Assert.Equal(2007, release.Year);
+        Assert.Contains("Hi10P", release.Summary);
+    }
+
     [Fact]
     public void Reads_a_UHD_sourced_1080p_encode_as_1080p()
     {

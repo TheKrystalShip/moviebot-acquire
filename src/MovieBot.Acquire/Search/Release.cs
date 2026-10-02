@@ -59,6 +59,13 @@ public sealed record Release
     /// </summary>
     public bool IsThreeDimensional { get; init; }
 
+    /// <summary>
+    /// Whether the video is 10-bit H.264, which scene names spell <c>Hi10P</c>. No GPU decodes
+    /// it, so the ingest decodes it on the processor and transcodes at a fraction of its usual
+    /// pace. It still plays; it is carried so the ranker can prefer anything else.
+    /// </summary>
+    public bool IsHighBitDepthAvc { get; init; }
+
     public long SizeBytes { get; init; }
 
     public int Seeders { get; init; }
@@ -118,6 +125,8 @@ public sealed record Release
 
             if (DynamicRange == DynamicRange.DolbyVision) parts.Add("DoVi");
             else if (DynamicRange == DynamicRange.Hdr10) parts.Add("HDR");
+
+            if (IsHighBitDepthAvc) parts.Add("Hi10P");
 
             parts.Add(SizeDisplay);
             parts.Add($"{Seeders} seed");

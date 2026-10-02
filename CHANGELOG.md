@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.21.0
+
+The disk budget measures free space on the volume the download directory is on. It asked the
+path's root, which on Unix is always `/`, so a download directory on its own mount was bounded by
+the system disk's free space instead of its own. The disk budget keeps `Download:ReservedGiB` (default 30) free on the download volume once a
+download lands, so the transcode written beside it on a shared volume has room to finish; a
+download that fits only by eating into it is refused. The budget's state is judged against
+whichever limit binds, so a volume with nothing left past the reserve reads as full, and one closer
+to it than the warning margin reads as a warning, even under a ceiling set above the volume's size.
+`DiskBudget.Judge` makes the decision on a reading already taken. A release whose name marks it as
+10-bit H.264 (`Hi10P`, or a 10-bit marker beside an H.264 one) carries `IsHighBitDepthAvc`, shows
+`Hi10P` in its summary, and ranks below every other candidate ahead of the tracker's flags: no GPU
+decodes it, so its transcode runs on the processor. It is still offered when it is all there is.
+
 ## 0.20.0
 
 `MovieBotSettings` locates and layers `moviebot.settings.json`, the settings file every MovieBot

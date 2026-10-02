@@ -16,27 +16,42 @@ public enum BudgetState { Ok = 0, Warning = 1, Full = 2 }
 /// What the volume itself has left, which can be the smaller of the two limits and is the one
 /// that produces a half-written file rather than a refusal.
 /// </param>
+/// <param name="ReservedBytes">
+/// What the volume keeps free after a download lands, for what the rest of the pipeline writes
+/// beside the downloads.
+/// </param>
 public sealed record BudgetReading(
     long UsedBytes,
     long MaximumBytes,
     long WarningBytes,
-    long FreeOnVolumeBytes)
+    long FreeOnVolumeBytes,
+    long ReservedBytes)
 {
     public long RemainingBytes => Math.Max(0, MaximumBytes - UsedBytes);
 
-    /// <summary>What can actually be written: the budget or the volume, whichever runs out first.</summary>
-    public long HeadroomBytes => Math.Min(RemainingBytes, FreeOnVolumeBytes);
+    /// <summary>What the volume can take before it eats into the reserve.</summary>
+    public long VolumeHeadroomBytes => Math.Max(0, FreeOnVolumeBytes - ReservedBytes);
 
-    public BudgetState State => UsedBytes >= MaximumBytes ? BudgetState.Full
-        : UsedBytes >= WarningBytes ? BudgetState.Warning
+    /// <summary>What can actually be written: the budget or the volume, whichever runs out first.</summary>
+    public long HeadroomBytes => Math.Min(RemainingBytes, VolumeHeadroomBytes);
+
+    /// <summary>
+    /// Judged against whichever limit binds. A ceiling set above the volume is never reached by
+    /// the directory alone, so reading the state off the ceiling only would report a volume with
+    /// nothing left as fine until the moment a download was refused.
+    /// </summary>
+    public BudgetState State => UsedBytes >= MaximumBytes || HeadroomBytes == 0 ? BudgetState.Full
+        : UsedBytes >= WarningBytes || HeadroomBytes < MaximumBytes - WarningBytes ? BudgetState.Warning
         : BudgetState.Ok;
 
     public double UsedGiB => UsedBytes / (double)(1L << 30);
     public double MaximumGiB => MaximumBytes / (double)(1L << 30);
     public double HeadroomGiB => HeadroomBytes / (double)(1L << 30);
+    public double ReservedGiB => ReservedBytes / (double)(1L << 30);
 
     public string Summary =>
-        $"{UsedGiB:0.#} of {MaximumGiB:0.#} GiB used, {HeadroomGiB:0.#} GiB free to write";
+        $"{UsedGiB:0.#} of {MaximumGiB:0.#} GiB used, {HeadroomGiB:0.#} GiB free to write "
+        + $"with {ReservedGiB:0.#} GiB kept free on the volume";
 }
 
 /// <summary>Whether a download may start, and what to say when it may not.</summary>
@@ -80,13 +95,16 @@ public sealed class DiskBudget(IOptions<DownloadOptions> options, ILogger<DiskBu
             used = 0;
         }
 
-        var free = new DriveInfo(Path.GetPathRoot(root) ?? "/").AvailableFreeSpace;
+        // Asked of the directory itself, which resolves to whatever is mounted there. The path's
+        // root is "/" on every Unix path, and the download directory is often on another mount.
+        var free = new DriveInfo(root).AvailableFreeSpace;
 
         return new BudgetReading(
             used,
             (long)(_options.MaximumGiB * (1L << 30)),
             (long)(_options.WarningGiB * (1L << 30)),
-            free);
+            free,
+            (long)(_options.ReservedGiB * (1L << 30)));
     }
 
     /// <summary>
@@ -96,13 +114,16 @@ public sealed class DiskBudget(IOptions<DownloadOptions> options, ILogger<DiskBu
     /// because a torrent client stopped partway through leaves the part it wrote behind and it
     /// still counts against the budget.
     /// </summary>
-    public BudgetVerdict CanAccept(long sizeBytes)
-    {
-        var reading = Read();
+    public BudgetVerdict CanAccept(long sizeBytes) => Judge(Read(), sizeBytes);
 
+    /// <summary>The decision <see cref="CanAccept"/> makes, on a reading already taken.</summary>
+    public BudgetVerdict Judge(BudgetReading reading, long sizeBytes)
+    {
         if (reading.State == BudgetState.Full)
             return new BudgetVerdict(false, reading,
-                $"The download directory is full: {reading.Summary}. Remove a film to make room.");
+                reading.UsedBytes >= reading.MaximumBytes
+                    ? $"The download directory is full: {reading.Summary}. Remove a film to make room."
+                    : $"The disk is full: {reading.Summary}. Remove a film to make room.");
 
         if (sizeBytes > reading.HeadroomBytes)
         {

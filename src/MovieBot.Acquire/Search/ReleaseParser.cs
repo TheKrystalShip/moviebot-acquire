@@ -21,7 +21,7 @@ public static partial class ReleaseParser
         + @"WEB-DL|WEBRip|WEB|HDTV|DVDRip|DVD9|DVD5|DVD|PAL|NTSC|CAM|TELESYNC|"
         + @"x264|x265|H\.?264|H\.?265|AVC|HEVC|XviD|DivX|"
         + @"DTS|DD\+?|DDP|AC3|AAC|TrueHD|Atmos|FLAC|"
-        + @"HDR10|HDR|DoVi|SDR|3D|H-SBS|SBS|"
+        + @"HDR10|HDR|DoVi|SDR|3D|H-SBS|SBS|Hi10P|Hi10|10bit|10-bit|"
         + @"PROPER|REPACK|RETAiL|EXTENDED|UNRATED|IMAX|LIMITED|COMPLETE|OST)\b",
         RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)]
     private static partial Regex QualityMarker();
@@ -58,6 +58,7 @@ public static partial class ReleaseParser
             DynamicRange = ReadDynamicRange(name),
             Group = TrailingGroup().Match(name) is { Success: true } g ? g.Groups[1].Value : null,
             IsThreeDimensional = IsThreeD(name),
+            IsHighBitDepthAvc = IsHi10P(name),
             SizeBytes = row.Size,
             Seeders = row.Seeders,
             Leechers = row.Leechers,
@@ -138,6 +139,23 @@ public static partial class ReleaseParser
     private static bool IsThreeD(string name) =>
         Contains(name, "3D") || Contains(name, "H-SBS") || Contains(name, "HSBS")
         || Contains(name, "SBS");
+
+    /// <summary>
+    /// 10-bit H.264, named outright or as a 10-bit marker beside an H.264 one. A 10-bit marker
+    /// beside HEVC is not it: 10-bit HEVC decodes on the GPU like any other.
+    /// </summary>
+    private static bool IsHi10P(string name)
+    {
+        if (Contains(name, "Hi10P") || Contains(name, "Hi10")) return true;
+
+        var tenBit = Contains(name, "10bit") || Contains(name, "10-bit");
+        var avc = Contains(name, "x264") || Contains(name, "H.264") || Contains(name, "H264")
+                  || Contains(name, "AVC");
+        var hevc = Contains(name, "x265") || Contains(name, "H.265") || Contains(name, "H265")
+                   || Contains(name, "HEVC");
+
+        return tenBit && avc && !hevc;
+    }
 
     private static DateTimeOffset? ReadUploadDate(string? value) =>
         DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out var parsed)

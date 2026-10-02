@@ -90,6 +90,9 @@ These are measured against what the tracker actually returns. Changing one means
   it as 2160p ranks it above the genuine 2160p releases beside it.
 - **Whole-token matching, never substring.** A substring test reads `3D` out of a group name and
   `WEB` out of a title, and both change how a release ranks.
+- **Hi10P ranks last, ahead of the tracker's flags, and is never rejected.** No GPU decodes 10-bit
+  H.264, so its transcode runs on the processor at under half the usual pace; it still plays, so
+  it is offered when it is all there is. 10-bit HEVC decodes on the GPU and is not Hi10P.
 - **Rejections are carried, never dropped.** `RankedReleases.EmptyExplanation` is why a search
   that offers nothing can say so. An empty menu is otherwise indistinguishable from a broken
   tracker call.
@@ -171,6 +174,13 @@ only thing that talks to it.
   ceiling on a release is a disk budget, not a bandwidth one.
 - **The volume's own free space bounds the budget.** Whichever runs out first is the real
   headroom, and the volume is the one that produces a half-written file rather than a refusal.
+  The state is judged against that same binding limit, so a ceiling set above the volume's size
+  still warns and still reads full.
+- **A download is not the last thing written for a film.** Its transcode lands while the source
+  seeds, on the same volume wherever the media root shares it, so the volume keeps
+  `Download:ReservedGiB` free after a download lands. A download that fits only by eating into it
+  is refused before the tracker is asked, instead of a transcode stopping partway in front of a
+  room.
 
 ## Retention invariants
 

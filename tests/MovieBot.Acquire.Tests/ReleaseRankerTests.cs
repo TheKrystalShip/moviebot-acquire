@@ -77,6 +77,29 @@ public class ReleaseRankerTests
     }
 
     [Fact]
+    public void Puts_Hi10P_below_every_other_release_even_a_freeleech_one()
+    {
+        // Its transcode runs on the processor at under half the usual pace, with a room waiting.
+        var ranked = new ReleaseRanker(Policy).Rank(
+            [
+                Release("Heat.1995.1080p.BluRay.Hi10P.x264-TENBIT", freeleech: true, seeders: 90),
+                Release("Heat.1995.720p.BluRay.x264-PLAIN", seeders: 2),
+            ],
+            expectedYear: 1995);
+
+        Assert.Equal(["PLAIN", "TENBIT"], ranked.Candidates.Select(r => r.Group));
+    }
+
+    [Fact]
+    public void Still_offers_Hi10P_when_it_is_all_there_is()
+    {
+        var ranked = new ReleaseRanker(Policy).Rank(
+            [Release("Heat.1995.1080p.BluRay.Hi10P.x264-TENBIT")], expectedYear: 1995);
+
+        Assert.True(Assert.Single(ranked.Candidates).IsHighBitDepthAvc);
+    }
+
+    [Fact]
     public void Explains_itself_when_it_offers_nothing()
     {
         var ranked = new ReleaseRanker(Policy).Rank(

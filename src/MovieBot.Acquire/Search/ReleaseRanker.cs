@@ -95,8 +95,12 @@ public sealed class ReleaseRanker(SelectionPolicy policy)
                 rejected.Add(new RejectedRelease(release, reason));
         }
 
+        // Hi10P sorts below everything else, ahead of the tracker's flags. It plays, but its
+        // transcode runs on the processor rather than the GPU at under half the usual pace, and
+        // a room is waiting on it; a freeleech is not worth that when another release exists.
         var ordered = candidates
-            .OrderByDescending(Tier)
+            .OrderBy(r => r.IsHighBitDepthAvc)
+            .ThenByDescending(Tier)
             .ThenByDescending(Score)
             .ThenByDescending(r => r.Seeders)
             .Take(policy.MaximumResults)
