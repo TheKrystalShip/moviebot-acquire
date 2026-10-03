@@ -47,6 +47,16 @@ public sealed record ImdbTitle
         && (Kind is null || Kind.Contains("movie", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
+    /// Whether this is a show — a series or a miniseries — rather than a film or one episode of a
+    /// show. A show is what the tracker files its seasons under.
+    /// </summary>
+    public bool IsSeries =>
+        ImdbId.StartsWith("tt", StringComparison.Ordinal)
+        && Kind is { } kind
+        && (kind.Equals("tvSeries", StringComparison.OrdinalIgnoreCase)
+            || kind.Equals("tvMiniSeries", StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
     /// The poster no wider than a number of pixels.
     ///
     /// The image host takes the size in the file name, and the originals are several thousand

@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.25.0
+
+Shows. A release whose name carries a season marker (`EpisodeMarker`: `S02`, `S02E04`,
+`S02E04E05`, `S01-S03`) is a show's: `Release.Episodic`, `IsEpisodic`, `EpisodeCount` and
+`SizePerEpisode` describe it, and its title ends at the marker. `IShowSearch.ByShowAsync` searches
+by the show's IMDb id and `ReleaseRanker.RankShow` offers `ShowReleases` season by season, packs
+and single episodes each best first; `ShowByTextAsync` names the show in the title index first.
+Shows have their own category allow-list (`Selection:AllowedShowCategories`, host configuration;
+empty offers no show), a per-episode ceiling (`MaximumEpisodeSizeGiB`, default 8) and prefer 720p
+(`PreferredShowResolution`). A film search rejects an episodic release as `NotAFilm`.
+
+`AcquisitionService.StartAsync` takes the episodes wanted: the torrent is added stopped, every
+other file is switched off, and it is started; picking from a torrent already held switches the new
+files on. `EpisodeFiles` maps a torrent's files to episodes, `Bencode.Files` reads a torrent's file
+list, and `FilesAsync` reports each file's priority and progress. `ReadableBytesAsync` counts from
+the file's own first piece, so an episode after one never picked is readable.
+
+`ImdbTitle.IsSeries`; `ImdbClient.SuggestShowsAsync` and `SuggestTitlesAsync`. `TmdbClient.ShowAsync`
+and `SeasonAsync` describe a show and a season's episodes (`ShowDetails`, `SeasonDetails`,
+`EpisodeDetails`). The CLI gains `show <tt|name>`.
+
 ## 0.24.0
 
 A keep is no longer a torrent tag: `TorrentTags` describes the download alone, and how long a film

@@ -88,19 +88,34 @@ public sealed class ImdbClient(HttpClient http, ILogger<ImdbClient> logger)
     ///
     /// Text carrying an id — a pasted link, most often — answers with the one film the id names
     /// rather than with a search for the text of the link, which would find nothing. Only
-    /// features are offered; a series or an episode is not something this pipeline can fetch.
+    /// features are offered: a surface asking for a film is never handed a show.
     /// </summary>
-    public async Task<IReadOnlyList<ImdbTitle>> SuggestAsync(string typed, CancellationToken ct)
+    public Task<IReadOnlyList<ImdbTitle>> SuggestAsync(string typed, CancellationToken ct) =>
+        SuggestAsync(typed, t => t.IsFeature, ct);
+
+    /// <summary>The shows the index offers for what somebody has typed, the same way.</summary>
+    public Task<IReadOnlyList<ImdbTitle>> SuggestShowsAsync(string typed, CancellationToken ct) =>
+        SuggestAsync(typed, t => t.IsSeries, ct);
+
+    /// <summary>
+    /// Films and shows together, in the index's own order, for a search box that offers both. An
+    /// episode is never offered: a show is fetched by its seasons.
+    /// </summary>
+    public Task<IReadOnlyList<ImdbTitle>> SuggestTitlesAsync(string typed, CancellationToken ct) =>
+        SuggestAsync(typed, t => t.IsFeature || t.IsSeries, ct);
+
+    private async Task<IReadOnlyList<ImdbTitle>> SuggestAsync(
+        string typed, Func<ImdbTitle, bool> wanted, CancellationToken ct)
     {
         if (ImdbId.FromText(typed) is { } pasted)
-            return await LookupAsync(pasted, ct) is { IsFeature: true } named ? [named] : [];
+            return await LookupAsync(pasted, ct) is { } named && wanted(named) ? [named] : [];
 
         var slug = Slug(typed);
         if (slug.Length == 0) return [];
 
         return (await FetchAsync($"x/{slug}", ct))
             .Select(Read)
-            .Where(t => t.IsFeature && t.ImdbId.Length > 0 && t.Title.Length > 0)
+            .Where(t => wanted(t) && t.ImdbId.Length > 0 && t.Title.Length > 0)
             .ToList();
     }
 

@@ -34,6 +34,9 @@ public static class AcquireServiceCollectionExtensions
             .Validate(p => p.AllowedCategories.All(c => !string.IsNullOrWhiteSpace(c)),
                 "Selection:AllowedCategories holds an empty entry; give every "
                 + "Selection__AllowedCategories__N a tracker category name or remove the line.")
+            .Validate(p => p.AllowedShowCategories.All(c => !string.IsNullOrWhiteSpace(c)),
+                "Selection:AllowedShowCategories holds an empty entry; give every "
+                + "Selection__AllowedShowCategories__N a tracker category name or remove the line.")
             .ValidateOnStart();
         services.AddSingleton(sp => sp.GetRequiredService<IOptions<SelectionPolicy>>().Value);
 
@@ -90,6 +93,7 @@ public static class AcquireServiceCollectionExtensions
 
         services.AddSingleton<ReleaseSearch>();
         services.AddSingleton<IReleaseSearch>(sp => sp.GetRequiredService<ReleaseSearch>());
+        services.AddSingleton<IShowSearch>(sp => sp.GetRequiredService<ReleaseSearch>());
         services.AddSingleton<AutocompleteSearch>();
 
         return services;

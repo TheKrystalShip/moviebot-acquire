@@ -39,8 +39,27 @@ public sealed record Release
     /// </summary>
     public string Display =>
         string.IsNullOrWhiteSpace(Title) ? ReleaseName
-        : Year is { } year ? $"{Title} ({year})"
-        : Title;
+        : (Year is { } year ? $"{Title} ({year})" : Title)
+          + (Episodic is { } marker ? $" {marker.Label}" : "");
+
+    /// <summary>
+    /// Where the release sits in a show — a season, several, or particular episodes — or null for
+    /// a film. A release carrying one is a show's whatever category it was filed under.
+    /// </summary>
+    public EpisodeMarker? Episodic { get; init; }
+
+    /// <summary>Whether this is part of a show rather than a film.</summary>
+    public bool IsEpisodic => Episodic is not null;
+
+    /// <summary>
+    /// How many episodes the release holds: those its name lists, or for a season pack the files
+    /// in the torrent, which a pack holds one per episode. Never less than one.
+    /// </summary>
+    public int EpisodeCount =>
+        Episodic is { IsSeasonPack: false } marker ? marker.Episodes.Count : Math.Max(1, FileCount);
+
+    /// <summary>The size of one episode, on average; the whole release for a film.</summary>
+    public long SizePerEpisode => IsEpisodic ? SizeBytes / EpisodeCount : SizeBytes;
 
     public string? ImdbId { get; init; }
 

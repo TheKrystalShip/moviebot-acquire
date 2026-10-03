@@ -41,8 +41,13 @@ public sealed class QBittorrentClient(
     /// endpoint answers "Ok." and does not say what it added. Adding a torrent already present
     /// is not an error and returns the same hash, so a repeated request is harmless.
     /// </summary>
+    /// <param name="stopped">
+    /// Added without starting, so the files it should not fetch can be switched off before a byte
+    /// of them arrives; <see cref="StartAsync"/> starts it.
+    /// </param>
     public async Task<string> AddAsync(
-        byte[] torrentFile, string savePath, IEnumerable<string>? tags, CancellationToken ct)
+        byte[] torrentFile, string savePath, IEnumerable<string>? tags, CancellationToken ct,
+        bool stopped = false)
     {
         var hash = Bencode.InfoHash(torrentFile);
 
@@ -57,6 +62,13 @@ public sealed class QBittorrentClient(
         form.Add(new StringContent(_options.Category), "category");
         form.Add(new StringContent(Spell(_options.SequentialDownload)), "sequentialDownload");
         form.Add(new StringContent(Spell(_options.FirstLastPiecePriority)), "firstLastPiecePrio");
+
+        // The client's own spelling of it, and the spelling its earlier API used.
+        if (stopped)
+        {
+            form.Add(new StringContent("true"), "stopped");
+            form.Add(new StringContent("true"), "paused");
+        }
 
         // The client separates tags by comma, so a tag may not contain one.
         var tagList = (tags ?? []).Select(t => t.Replace(',', ' ')).ToList();
@@ -97,6 +109,94 @@ public sealed class QBittorrentClient(
     /// </summary>
     public Task RemoveTagAsync(string hash, string tag, CancellationToken ct) =>
         ChangeTagsAsync("api/v2/torrents/removeTags", hash, tag, ct);
+
+    /// <summary>
+    /// The files of one torrent, with what the client is fetching of each. Empty for a torrent the
+    /// client does not hold, and for one whose metadata it does not have yet.
+    /// </summary>
+    public async Task<IReadOnlyList<QBittorrentFile>> FilesAsync(string hash, CancellationToken ct)
+    {
+        await EnsureSignedInAsync(ct);
+
+        using var response = await SendAsync(() => http.GetAsync(
+            $"api/v2/torrents/files?hash={Uri.EscapeDataString(hash)}", ct), ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound) return [];
+        if (!response.IsSuccessStatusCode)
+            throw new QBittorrentException($"The torrent client answered {(int)response.StatusCode}.");
+
+        try
+        {
+            return JsonSerializer.Deserialize(
+                await response.Content.ReadAsStringAsync(ct),
+                QBittorrentJsonContext.Default.IReadOnlyListQBittorrentFile) ?? [];
+        }
+        catch (JsonException ex)
+        {
+            throw new QBittorrentException("The torrent client's answer could not be read.", ex);
+        }
+    }
+
+    /// <summary>
+    /// Sets which of a torrent's files are fetched: 0 leaves a file alone, 1 fetches it. A file
+    /// left alone is never written, which is how a few episodes come out of a season's pack.
+    /// </summary>
+    public async Task SetFilePriorityAsync(
+        string hash, IReadOnlyCollection<int> indices, int priority, CancellationToken ct)
+    {
+        if (indices.Count == 0) return;
+        await EnsureSignedInAsync(ct);
+
+        using var response = await PostFormAsync("api/v2/torrents/filePrio", new()
+        {
+            ["hash"] = hash,
+            ["id"] = string.Join('|', indices.Order()),
+            ["priority"] = priority.ToString(CultureInfo.InvariantCulture),
+        }, ct);
+
+        if (!response.IsSuccessStatusCode)
+            throw new QBittorrentException(
+                $"The torrent client answered {(int)response.StatusCode} setting file priorities.");
+    }
+
+    /// <summary>Starts a torrent added stopped.</summary>
+    public async Task StartAsync(string hash, CancellationToken ct)
+    {
+        await EnsureSignedInAsync(ct);
+
+        // The client's own verb for it, and the verb its earlier API used, which answers 404 here.
+        using var response = await PostFormAsync("api/v2/torrents/start", new() { ["hashes"] = hash }, ct);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            using var resumed = await PostFormAsync("api/v2/torrents/resume", new() { ["hashes"] = hash }, ct);
+            if (!resumed.IsSuccessStatusCode)
+                throw new QBittorrentException(
+                    $"The torrent client answered {(int)resumed.StatusCode} starting a torrent.");
+            return;
+        }
+
+        if (!response.IsSuccessStatusCode)
+            throw new QBittorrentException(
+                $"The torrent client answered {(int)response.StatusCode} starting a torrent.");
+    }
+
+    private Task<HttpResponseMessage> PostFormAsync(
+        string endpoint, Dictionary<string, string> fields, CancellationToken ct) =>
+        SendAsync(() => http.PostAsync(endpoint, new FormUrlEncodedContent(fields), ct), ct);
+
+    /// <summary>One request, with an unreachable client reported as itself.</summary>
+    private static async Task<HttpResponseMessage> SendAsync(
+        Func<Task<HttpResponseMessage>> send, CancellationToken ct)
+    {
+        try
+        {
+            return await send();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException
+                                   && !ct.IsCancellationRequested)
+        {
+            throw new QBittorrentException("The torrent client could not be reached.", ex);
+        }
+    }
 
     /// <summary>
     /// Removes a torrent from the client, and its files from disk with it.
@@ -246,11 +346,13 @@ public sealed class QBittorrentClient(
 
         if (!found) return 0;
 
-        // Two is the client's spelling of "downloaded". The first piece that is not is where
-        // reading forwards has to stop.
-        var missing = Array.IndexOf(states, 0) is var zero && zero >= 0 ? zero : states.Length;
-        var partial = Array.IndexOf(states, 1);
-        if (partial >= 0 && partial < missing) missing = partial;
+        // Two is the client's spelling of "downloaded". Reading starts at the file's own first
+        // piece, not the torrent's: a file before it that was never picked never arrives, and
+        // counting from the start would hold this one unreadable forever. The first piece from
+        // there that has not arrived is where reading forwards has to stop.
+        var first = (int)(fileOffset / properties.PieceSize);
+        var missing = first;
+        while (missing < states.Length && states[missing] == 2) missing++;
 
         var contiguous = (long)missing * properties.PieceSize;
         var readable = contiguous - fileOffset;

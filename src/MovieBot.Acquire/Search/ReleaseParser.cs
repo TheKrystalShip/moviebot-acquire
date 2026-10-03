@@ -44,7 +44,8 @@ public static partial class ReleaseParser
     public static Release Parse(TrackerTorrent row)
     {
         var name = row.Name;
-        var (title, year) = SplitTitleAndYear(name);
+        var episodic = EpisodeMarker.Read(name);
+        var (title, year) = SplitTitleAndYear(name, episodic?.Index);
 
         return new Release
         {
@@ -52,6 +53,7 @@ public static partial class ReleaseParser
             ReleaseName = name,
             Title = title,
             Year = year,
+            Episodic = episodic,
             ImdbId = string.IsNullOrWhiteSpace(row.Imdb) ? null : row.Imdb,
             Resolution = ReadResolution(name),
             Source = ReadSource(name),
@@ -71,10 +73,15 @@ public static partial class ReleaseParser
         };
     }
 
-    private static (string Title, int? Year) SplitTitleAndYear(string name)
+    /// <param name="episodeAt">
+    /// Where a show's season or episode marker starts. A show's title ends there, ahead of the
+    /// episode's own name, which carries no quality marker to stop at.
+    /// </param>
+    private static (string Title, int? Year) SplitTitleAndYear(string name, int? episodeAt)
     {
         var marker = QualityMarker().Match(name);
         var limit = marker.Success ? marker.Index : name.Length;
+        if (episodeAt is { } at && at < limit) limit = at;
 
         // The last year to the left of the first quality marker. A film whose title is itself a
         // year keeps its title because the release year is always the later of the two tokens.
@@ -92,12 +99,16 @@ public static partial class ReleaseParser
         return (Clean(name[..chosen.Index]), year);
     }
 
-    /// <summary>Turns a dotted release fragment back into something a person reads.</summary>
+    /// <summary>
+    /// Turns a dotted release fragment back into something a person reads. A dash left at the end
+    /// is the separator before whatever was cut off, as in <c>Show - S01</c>.
+    /// </summary>
     private static string Clean(string fragment) =>
         string.Join(' ', fragment
             .Replace('.', ' ')
             .Replace('_', ' ')
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            .TrimEnd(' ', '-');
 
     private static Resolution ReadResolution(string name)
     {

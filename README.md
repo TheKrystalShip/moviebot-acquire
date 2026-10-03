@@ -1,9 +1,10 @@
 # moviebot-acquire
 
-Finds films on a private tracker and downloads them in a form that can be watched while they
-arrive. It is the acquiring half of [MovieBot](https://github.com/TheKrystalShip/moviebot): this
-library searches the tracker, drives the torrent client, looks films up, finds subtitles and
-manages disk, and MovieBot takes what lands on disk and plays it to a Discord voice channel.
+Finds films and shows on a private tracker and downloads them in a form that can be watched while
+they arrive. It is the acquiring half of [MovieBot](https://github.com/TheKrystalShip/moviebot):
+this library searches the tracker, drives the torrent client, looks films and shows up, finds
+subtitles and manages disk, and MovieBot takes what lands on disk and plays it to a Discord voice
+channel.
 
 It is a .NET library with a small CLI on top. MovieBot's services reference the library by
 relative path, so the two repositories are checked out side by side and move together.
@@ -12,12 +13,17 @@ relative path, so the two repositories are checked out side by side and move tog
 
 - **Tracker search and ranking.** Queries are parsed for a title and year, matched against each
   release's own title, filtered by a selection policy and ranked, with every rejection counted.
+- **Shows, season by season.** A show's releases are found by its IMDb id and offered per season:
+  packs for a finished season, single episodes for an airing one, judged per episode.
+- **Episode picking.** Particular episodes are downloaded out of a season's pack, and only those
+  files are fetched.
 - **Autocomplete.** A search built for a chat surface's suggestion list, which answers every
   keystroke while keeping a typed query to roughly one tracker call.
 - **Downloads that can be watched early.** Torrents are added to qBittorrent sequentially with
   first-and-last-piece priority, and the library reports how much of a file is readable from its
   start without a gap.
-- **Film lookup.** Names, years, billing and posters by IMDb id, from IMDb's public suggestion index.
+- **Film and show lookup.** Names, years, billing and posters by IMDb id, from IMDb's public
+  suggestion index; credits, certificates, seasons and episodes from The Movie Database.
 - **Subtitles.** Search and download through the OpenSubtitles API, with checks that a subtitle
   fits the film it is for.
 - **Disk budget and retention.** A ceiling on the download directory, and a seeding window after
@@ -50,6 +56,7 @@ The CLI is the library's own surface, and the way to exercise the tracker withou
 ```bash
 moviebot-acquire search Heat 1995        # rank what the tracker has
 moviebot-acquire imdb tt0113277          # the same, by exact film
+moviebot-acquire show Slow Horses        # what the tracker offers for a show, per season
 moviebot-acquire film Heat               # what the title index calls a film
 moviebot-acquire get Heat 1995           # start the top result downloading
 moviebot-acquire get Heat 1995 --pick 4  # or the fourth
@@ -72,6 +79,7 @@ from a file in this repository:
 | `Tracker__Username` | The account name |
 | `Tracker__Passkey` | The account's passkey |
 | `Selection__AllowedCategories__0`, `__1`, … | The tracker's category names a film may come from. Required: a host without them refuses to start |
+| `Selection__AllowedShowCategories__0`, `__1`, … | The tracker's category names a show may come from. Without them no show is offered |
 | `OpenSubtitles__ApiKey` | The subtitle index's API key |
 
 The passkey authenticates the API and is also embedded in every download URL the tracker returns,
@@ -90,6 +98,8 @@ the file leaves out takes the library's default:
   "MaximumResolution": "Hd1080",
   "PreferredResolution": "Hd1080",
   "MaximumSizeGiB": 25,
+  "PreferredShowResolution": "Hd720",
+  "MaximumEpisodeSizeGiB": 8,
   "MaximumResults": 10,
   "TierByTrackerFlags": true
 },
@@ -136,6 +146,13 @@ call.
 - **Rejections are counted, never dropped**, so a search that finds releases and offers none says
   why instead of looking like a failed call.
 
+A show is searched by its own IMDb id, which the tracker files every season and episode under. A
+release is a show's when its name carries a season marker (`S02`, `S02E04`, `S01-S03`), and the
+show's title ends at that marker. A film search never offers one and a show search offers nothing
+else. A show is judged per episode, since a season pack's size says how long the season is rather
+than how heavy the encode, and 720p is offered first: a season is many hours, and a person can
+still pick 1080p.
+
 ### Autocomplete
 
 `AutocompleteSearch` answers a slash command's suggestion list, which is requested on every
@@ -163,9 +180,17 @@ add endpoint does not say what it added. Disk space is checked before the tracke
 torrent file is fetched before the client is asked to take it, so a failure leaves nothing half
 started.
 
+Picking episodes out of a pack adds the torrent stopped, switches every other file off and starts
+it, so a file not picked is never written. Which file is which episode is read from the file names
+by `EpisodeFiles`, the one reading of it shared with MovieBot's hand-off. The tracker accounts for
+a torrent whichever of its files are fetched, so seeding a few episodes of a pack is seeding the
+pack.
+
 `ReadableBytesAsync` reports how many bytes of a file are readable from its start **without a
 gap**. That is the only useful measure for something reading the file forwards, and it is asked
-rather than assumed, because pieces can arrive out of order even in a sequential download.
+rather than assumed, because pieces can arrive out of order even in a sequential download. It is
+counted from the file's own first piece, since a file before it in the torrent may never have been
+picked.
 
 ### Disk and retention
 
@@ -185,7 +210,8 @@ src/MovieBot.Acquire/          the library
   Search/                      query parsing, release parsing, selection, ranking, autocomplete
   Configuration/               where moviebot.settings.json lives, and how it is layered
   Download/                    qBittorrent client, disk budget, retention, torrent tags
-  Imdb/                        film lookup by IMDb id
+  Imdb/                        film and show lookup by IMDb id
+  Tmdb/                        film and show descriptions from The Movie Database
   Subtitles/                   OpenSubtitles client and subtitle checks
 src/MovieBot.Acquire.Cli/      the moviebot-acquire CLI
 tests/MovieBot.Acquire.Tests/  unit tests

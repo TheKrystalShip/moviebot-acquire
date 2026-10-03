@@ -43,6 +43,26 @@ public sealed class SelectionPolicy
     public string[] AllowedCategories { get; set; } = [];
 
     /// <summary>
+    /// The tracker categories a show may come from, spelled as the tracker spells them, kept apart
+    /// from the films' so a search for one never offers the other. Empty offers no show at all,
+    /// since these are what say a release is a show's. Host configuration, like the films' list.
+    /// </summary>
+    public string[] AllowedShowCategories { get; set; } = [];
+
+    /// <summary>
+    /// The resolution to aim for in a show. Lower than a film's: a season is many hours, and 720p
+    /// is a third of 1080p's size for a picture the ladder serves at 720p anyway on most screens.
+    /// A person may still ask for 1080p.
+    /// </summary>
+    public Resolution PreferredShowResolution { get; set; } = Resolution.Hd720;
+
+    /// <summary>
+    /// The largest an episode may be, in gibibytes, averaged over a pack. A season is judged per
+    /// episode because a pack's total says how long the season is, not how heavy the encode.
+    /// </summary>
+    public double MaximumEpisodeSizeGiB { get; set; } = 8;
+
+    /// <summary>
     /// Whether stereoscopic releases are offered. They are not, by default: the player has no
     /// stereoscopic mode, so a side-by-side encode arrives as two squashed half-width images.
     /// </summary>

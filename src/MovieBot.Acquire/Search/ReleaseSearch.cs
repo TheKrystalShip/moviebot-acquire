@@ -17,8 +17,21 @@ public interface IReleaseSearch
     Task<RankedReleases> ByImdbAsync(string imdbId, CancellationToken ct);
 }
 
+/// <summary>Finding a show, season by season.</summary>
+public interface IShowSearch
+{
+    /// <summary>
+    /// What the tracker offers for a show named by its IMDb id. The tracker files every season
+    /// and episode under the show's own id, so this is one call for the whole show.
+    /// </summary>
+    Task<ShowReleases> ByShowAsync(string imdbId, CancellationToken ct);
+
+    /// <summary>The same, for a show named by what somebody typed; empty when no show matches.</summary>
+    Task<ShowReleases> ShowByTextAsync(string typed, CancellationToken ct);
+}
+
 /// <summary>
-/// The one entry point anything outside this project uses to find a film.
+/// The one entry point anything outside this project uses to find a film or a show.
 ///
 /// It is the seam that keeps the tracker's shapes and the account's passkey inside this project:
 /// what comes back is <see cref="Release"/>, which holds no credential and can be logged, shown
@@ -28,7 +41,7 @@ public sealed class ReleaseSearch(
     TrackerClient client,
     ImdbClient imdb,
     ReleaseRanker ranker,
-    ILogger<ReleaseSearch> logger) : IReleaseSearch
+    ILogger<ReleaseSearch> logger) : IReleaseSearch, IShowSearch
 {
     /// <summary>
     /// Finds candidates for whatever somebody typed, by working out which film they meant first.
@@ -65,9 +78,11 @@ public sealed class ReleaseSearch(
     /// the whole of what separates a remake from what it remade; without one the index's own
     /// order stands, which is the order a person searching would expect to see.
     /// </summary>
-    private async Task<ImdbTitle?> IdentifyAsync(string typed, CancellationToken ct)
+    private async Task<ImdbTitle?> IdentifyAsync(string typed, CancellationToken ct) =>
+        Pick(typed, await imdb.SuggestAsync(typed, ct));
+
+    private static ImdbTitle? Pick(string typed, IReadOnlyList<ImdbTitle> found)
     {
-        var found = await imdb.SuggestAsync(typed, ct);
         if (found.Count == 0) return null;
 
         return SearchQuery.Parse(typed).Year is { } wanted
@@ -106,6 +121,24 @@ public sealed class ReleaseSearch(
 
         // The id already names one film, so there is nothing left to disagree with.
         return Rank(rows, null, null);
+    }
+
+    public async Task<ShowReleases> ByShowAsync(string imdbId, CancellationToken ct)
+    {
+        var rows = await client.SearchByImdbAsync(imdbId, ct);
+        var ranked = ranker.RankShow(rows.Select(ReleaseParser.Parse));
+        logger.LogInformation(
+            "Search for show {Imdb} returned {Rows} rows, offering {Seasons} seasons.",
+            imdbId, rows.Count, ranked.Seasons.Count);
+        return ranked;
+    }
+
+    public async Task<ShowReleases> ShowByTextAsync(string typed, CancellationToken ct)
+    {
+        if (Pick(typed, await imdb.SuggestShowsAsync(typed, ct)) is not { } show)
+            return new ShowReleases([], []);
+
+        return await ByShowAsync(show.ImdbId, ct) with { Show = show };
     }
 
     private RankedReleases Rank(

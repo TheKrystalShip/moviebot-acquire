@@ -41,6 +41,7 @@ try
     {
         "search" => await SearchAsync(string.Join(' ', args.Skip(1))),
         "imdb" => await ImdbAsync(args.Skip(1).FirstOrDefault()),
+        "show" => await ShowAsync(string.Join(' ', args.Skip(1))),
         "film" => await FilmAsync(string.Join(' ', args.Skip(1))),
         "budget" => Budget(),
         "get" => await GetAsync(args.Skip(1).ToArray()),
@@ -85,6 +86,52 @@ async Task<int> ImdbAsync(string? imdbId)
 
     var search = services.GetRequiredService<ReleaseSearch>();
     return Report(await search.ByImdbAsync(imdbId, cancellation.Token));
+}
+
+async Task<int> ShowAsync(string typed)
+{
+    if (string.IsNullOrWhiteSpace(typed))
+    {
+        Console.Error.WriteLine("error: show needs a show's id or name.");
+        return 2;
+    }
+
+    var search = services.GetRequiredService<ReleaseSearch>();
+    var show = ImdbId.FromText(typed) is { } id
+        ? await search.ByShowAsync(id, cancellation.Token)
+        : await search.ShowByTextAsync(typed, cancellation.Token);
+
+    if (show.Show is { } named)
+        Console.WriteLine($"{named.Display}  {named.ImdbId}");
+
+    if (show.Seasons.Count == 0)
+    {
+        Console.Error.WriteLine(show.EmptyExplanation ?? "No show by that name in the title index.");
+        return 1;
+    }
+
+    foreach (var season in show.Seasons)
+    {
+        Console.WriteLine($"Season {season.Season}");
+        foreach (var pack in season.Packs)
+            Console.WriteLine($"  pack  {pack.Summary} · {pack.EpisodeCount} episodes"
+                              + $"  id={pack.TorrentId}  {pack.ReleaseName}");
+        foreach (var episode in season.Episodes)
+            foreach (var release in episode.Releases)
+                Console.WriteLine($"  E{episode.Episode:00}   {release.Summary}"
+                                  + $"  id={release.TorrentId}  {release.ReleaseName}");
+    }
+
+    if (show.Rejected.Count > 0)
+    {
+        var counts = show.Rejected
+            .GroupBy(r => r.Reason)
+            .OrderByDescending(g => g.Count())
+            .Select(g => $"{g.Count()} {g.Key}");
+        Console.Error.WriteLine($"filtered out: {string.Join(", ", counts)}");
+    }
+
+    return 0;
 }
 
 int Report(RankedReleases ranked)
@@ -246,6 +293,7 @@ int Help()
 
           search <title>     rank what the tracker has under a title
           imdb <tt0000000>   the same, by exact film
+          show <tt|name>     what the tracker offers for a show, season by season
           film <id|name>     what the title index holds: name, year, billing, poster
           get <title> [--pick N]   start the top result downloading, or the Nth
           downloads          what is downloading now

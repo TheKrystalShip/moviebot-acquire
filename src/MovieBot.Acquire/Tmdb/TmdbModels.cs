@@ -8,6 +8,87 @@ namespace TheKrystalShip.MovieBot.Acquire.Tmdb;
 public sealed record TmdbFindResponse
 {
     [JsonPropertyName("movie_results")] public IReadOnlyList<TmdbFound>? MovieResults { get; init; }
+    [JsonPropertyName("tv_results")] public IReadOnlyList<TmdbFound>? TvResults { get; init; }
+}
+
+public sealed record TmdbTv
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("original_name")] public string? OriginalName { get; init; }
+    [JsonPropertyName("original_language")] public string? OriginalLanguage { get; init; }
+    [JsonPropertyName("overview")] public string? Overview { get; init; }
+    [JsonPropertyName("tagline")] public string? Tagline { get; init; }
+    [JsonPropertyName("first_air_date")] public string? FirstAirDate { get; init; }
+    [JsonPropertyName("last_air_date")] public string? LastAirDate { get; init; }
+    [JsonPropertyName("status")] public string? Status { get; init; }
+    [JsonPropertyName("in_production")] public bool? InProduction { get; init; }
+    [JsonPropertyName("vote_average")] public double? VoteAverage { get; init; }
+    [JsonPropertyName("vote_count")] public int? VoteCount { get; init; }
+    [JsonPropertyName("poster_path")] public string? PosterPath { get; init; }
+    [JsonPropertyName("backdrop_path")] public string? BackdropPath { get; init; }
+    [JsonPropertyName("genres")] public IReadOnlyList<TmdbNamed>? Genres { get; init; }
+    [JsonPropertyName("spoken_languages")] public IReadOnlyList<TmdbLanguage>? SpokenLanguages { get; init; }
+    [JsonPropertyName("production_countries")] public IReadOnlyList<TmdbNamed>? ProductionCountries { get; init; }
+    [JsonPropertyName("networks")] public IReadOnlyList<TmdbNamed>? Networks { get; init; }
+    [JsonPropertyName("created_by")] public IReadOnlyList<TmdbNamed>? CreatedBy { get; init; }
+    [JsonPropertyName("seasons")] public IReadOnlyList<TmdbTvSeason>? Seasons { get; init; }
+    [JsonPropertyName("aggregate_credits")] public TmdbAggregateCredits? AggregateCredits { get; init; }
+    [JsonPropertyName("content_ratings")] public TmdbContentRatings? ContentRatings { get; init; }
+}
+
+public sealed record TmdbTvSeason
+{
+    [JsonPropertyName("season_number")] public int SeasonNumber { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("overview")] public string? Overview { get; init; }
+    [JsonPropertyName("air_date")] public string? AirDate { get; init; }
+    [JsonPropertyName("episode_count")] public int? EpisodeCount { get; init; }
+    [JsonPropertyName("poster_path")] public string? PosterPath { get; init; }
+    [JsonPropertyName("episodes")] public IReadOnlyList<TmdbEpisode>? Episodes { get; init; }
+}
+
+public sealed record TmdbEpisode
+{
+    [JsonPropertyName("season_number")] public int SeasonNumber { get; init; }
+    [JsonPropertyName("episode_number")] public int EpisodeNumber { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("overview")] public string? Overview { get; init; }
+    [JsonPropertyName("air_date")] public string? AirDate { get; init; }
+    [JsonPropertyName("runtime")] public int? Runtime { get; init; }
+    [JsonPropertyName("vote_average")] public double? VoteAverage { get; init; }
+    [JsonPropertyName("vote_count")] public int? VoteCount { get; init; }
+    [JsonPropertyName("still_path")] public string? StillPath { get; init; }
+}
+
+public sealed record TmdbAggregateCredits
+{
+    [JsonPropertyName("cast")] public IReadOnlyList<TmdbAggregateCast>? Cast { get; init; }
+}
+
+public sealed record TmdbAggregateCast
+{
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("order")] public int? Order { get; init; }
+    [JsonPropertyName("profile_path")] public string? ProfilePath { get; init; }
+    [JsonPropertyName("roles")] public IReadOnlyList<TmdbRole>? Roles { get; init; }
+}
+
+public sealed record TmdbRole
+{
+    [JsonPropertyName("character")] public string? Character { get; init; }
+    [JsonPropertyName("episode_count")] public int? EpisodeCount { get; init; }
+}
+
+public sealed record TmdbContentRatings
+{
+    [JsonPropertyName("results")] public IReadOnlyList<TmdbContentRating>? Results { get; init; }
+}
+
+public sealed record TmdbContentRating
+{
+    [JsonPropertyName("iso_3166_1")] public string? Country { get; init; }
+    [JsonPropertyName("rating")] public string? Rating { get; init; }
 }
 
 public sealed record TmdbFound
@@ -90,4 +171,6 @@ public sealed record TmdbRelease
 
 [JsonSerializable(typeof(TmdbFindResponse))]
 [JsonSerializable(typeof(TmdbMovie))]
+[JsonSerializable(typeof(TmdbTv))]
+[JsonSerializable(typeof(TmdbTvSeason))]
 public partial class TmdbJsonContext : JsonSerializerContext;

@@ -76,6 +76,12 @@ public sealed record QBittorrentFile
     [JsonPropertyName("size")] public long Size { get; init; }
 
     [JsonPropertyName("index")] public int Index { get; init; }
+
+    /// <summary>0 for a file the client is not fetching; anything above it is fetched.</summary>
+    [JsonPropertyName("priority")] public int Priority { get; init; }
+
+    /// <summary>The fraction of the file that has arrived, 0 to 1.</summary>
+    [JsonPropertyName("progress")] public double Progress { get; init; }
 }
 
 [JsonSourceGenerationOptions(DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull)]

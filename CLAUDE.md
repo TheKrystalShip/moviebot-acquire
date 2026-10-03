@@ -4,7 +4,7 @@ Guidance for Claude Code working in this repository.
 
 ## What this is
 
-moviebot-acquire finds films on a private tracker and fetches them to disk. It is the acquiring
+moviebot-acquire finds films and shows on a private tracker and fetches them to disk. It is the acquiring
 half of the MovieBot pipeline: this reaches the tracker, the torrent client and the title index,
 and `moviebot` — the checkout beside it in this workspace — takes what lands on disk and makes it
 watchable.
@@ -31,7 +31,8 @@ attributable. Most of the design falls out of that:
   in an embed and to hand to a select menu without thinking about it.
 - `TrackerTorrent` is the edge of the system. Nothing outside `Tracker/` holds one.
 - **Which tracker this is lives in the host's configuration, never in the repository.**
-  `Tracker:BaseUrl` and `Selection:AllowedCategories` have no defaults and nothing here names the
+  `Tracker:BaseUrl`, `Selection:AllowedCategories` and `Selection:AllowedShowCategories` have no
+  defaults and nothing here names the
   site: the address and the tracker's own category names are set beside the account, in the same
   environment file. A name, a domain, a URL or a category spelling of it appearing in code, a test,
   a doc or a commit message is a leak of the same kind as the passkey; tests use `tracker.invalid`
@@ -57,7 +58,8 @@ A tag `v<version>` matching the newest CHANGELOG heading publishes the CLI as a 
 **MovieBot's CI and releases check out this repository's `main`**, so a push here that changes a
 public type is a red build there until MovieBot's half is pushed too: push the two together.
 
-The CLI's verbs: `search <title>` and `imdb <tt…>` rank what the tracker holds, `film <id|name>`
+The CLI's verbs: `search <title>` and `imdb <tt…>` rank what the tracker holds, `show <tt|name>`
+lists what it offers for a show season by season, `film <id|name>`
 asks the title index what a film is called, `get <title> [--pick N]` starts a download,
 `downloads` reports what is running and `budget` reports the download directory against its
 ceiling.
@@ -98,6 +100,22 @@ These are measured against what the tracker actually returns. Changing one means
   tracker call.
 - **The client paces itself.** The tracker caps how often a member may call it and answers past
   the cap with an error rather than a result.
+
+### Shows
+
+- **A show is searched by its own IMDb id, and that is one call.** The tracker files every season
+  and every episode under the show's id, never an episode's.
+- **A release is a show's when its name carries a season marker** (`EpisodeMarker`: `S02`,
+  `S02E04`, `S02E04E05`, `S01-S03`), whatever category it was filed under. A film search rejects
+  one and a show search accepts nothing else, and each has its own category allow-list.
+- **A show's title ends at its marker.** An episode's own name follows it and carries no quality
+  marker to stop at, so without the marker `Slow Horses S06E02 Daddy Issues` is the title.
+- **A show is judged per episode.** A season pack's total says how long the season is, not how
+  heavy the encode: a 1080p pack is 20–44 GiB, an episode 2–5.
+- **Shows prefer 720p.** A season is many hours; the ladder serves 720p to most screens anyway,
+  and a person may still pick 1080p.
+- **Finished seasons are packs, airing ones are single episodes**, both measured. A pack is offered
+  under every season it covers and an episode under its episode.
 
 ## Autocomplete invariants
 
@@ -162,14 +180,20 @@ only thing that talks to it.
   of what separates a remake from what it remade.
 - **A search that cannot be sure answers with nothing.** A film named wrongly is worse than one
   not named at all, because everything downstream believes it.
+- **A surface asking for a film is never handed a show, and the reverse.** `SuggestAsync` offers
+  features, `SuggestShowsAsync` series and miniseries, `SuggestTitlesAsync` both; an episode is never
+  offered, since a show is fetched by its seasons. A film search identifies its film among features
+  only, so a series sharing the name does not send it to the series' id.
 
 ## Film database invariants
 
-`TmdbClient` describes a film from The Movie Database: credits, certificate, genres, overview,
-languages, countries, a rating and its artwork. It is the only thing that talks to it.
+`TmdbClient` describes a film or a show from The Movie Database: credits, certificate, genres,
+overview, languages, countries, a rating and its artwork, and for a show its seasons and each
+season's episodes with their stills. It is the only thing that talks to it.
 
-- **A film is found by its IMDb id.** That is how everything in MovieBot names a film, and the
-  database maps it, so nothing downstream has to learn a second id.
+- **A film or a show is found by its IMDb id.** That is how everything in MovieBot names one, and
+  the database maps it, so nothing downstream has to learn a second id. A season is asked for by
+  the show's database id, which the show's description carries.
 - **The token is a credential and lives in the environment** (`Tmdb__ReadAccessToken`). Without one
   nothing is asked and a film is described by the index alone.
 - **Nothing reaches the database but the API, and it asks once.** The client hands out image paths,
@@ -243,6 +267,16 @@ the library owner's clock and not this one.
   cannot estimate, and showing it produces a film arriving in a hundred years.
 - **Disk is checked before the tracker is asked, and the torrent fetched before the client is
   asked to take it.** Each ordering exists so a refusal costs nothing and leaves nothing behind.
+- **Picked episodes are the only files fetched.** The torrent is added stopped, every file not
+  picked gets priority 0, and it is started: a file switched off after starting may already have
+  pieces on disk. Files are matched to the client's list by path, never by index, and a torrent
+  that fails partway is deleted rather than left stopped. The tracker accounts for the torrent,
+  not the files fetched from it, so retention treats a partly fetched pack like any other.
+- **Which file is which episode is `EpisodeFiles`, and nowhere else.** The download picks files
+  with it and the hand-off ingests them with it; two readings would fetch an episode the other
+  never ingests.
+- **A file is readable from its own first piece.** A file before it in the torrent may never have
+  been picked, so counting from the torrent's start would hold every later episode unreadable.
 
 ## Tags
 
