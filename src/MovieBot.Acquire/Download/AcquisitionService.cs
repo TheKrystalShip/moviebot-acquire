@@ -115,12 +115,17 @@ public sealed class AcquisitionService(
     private static readonly TimeSpan FilesPoll = TimeSpan.FromMilliseconds(250);
     private const int FilesPolls = 40;
 
+    /// <summary>The torrent client's two priorities above normal for a file.</summary>
+    private const int MaximumPriority = 7;
+    private const int HighPriority = 6;
+
     private async Task<AcquisitionResult> StartPickedAsync(
         Release release, byte[] torrentFile, IReadOnlyCollection<EpisodeNumber> episodes,
         IEnumerable<string>? tags, CancellationToken ct)
     {
         string hash;
         HashSet<string> wanted;
+        Dictionary<string, EpisodeNumber> order;
         try
         {
             hash = Bencode.InfoHash(torrentFile);
@@ -140,6 +145,7 @@ public sealed class AcquisitionService(
             }
 
             wanted = picked.Select(f => f.Path).ToHashSet(StringComparer.Ordinal);
+            order = picked.ToDictionary(f => f.Path, f => f.Episode, StringComparer.Ordinal);
         }
         catch (FormatException ex)
         {
@@ -171,7 +177,16 @@ public sealed class AcquisitionService(
             if (on.Count == 0)
                 throw new QBittorrentException("The torrent client names the torrent's files differently.");
 
-            await torrents.SetFilePriorityAsync(hash, on, 1, ct);
+            // In episode order: the first picked is wanted soonest, so it is fetched at the client's
+            // highest priority and the second at its next; the rest follow at normal priority, in
+            // the torrent's order, which sequential downloading keeps. The client has these three
+            // levels for a file and no more.
+            var byEpisode = order.Count == 0 ? on : on
+                .OrderBy(i => order.GetValueOrDefault(listed.First(f => f.Index == i).Name, new EpisodeNumber(int.MaxValue, 0)))
+                .ToList();
+            await torrents.SetFilePriorityAsync(hash, byEpisode, 1, ct);
+            if (byEpisode.Count > 0) await torrents.SetFilePriorityAsync(hash, [byEpisode[0]], MaximumPriority, ct);
+            if (byEpisode.Count > 1) await torrents.SetFilePriorityAsync(hash, [byEpisode[1]], HighPriority, ct);
             if (!held)
             {
                 await torrents.SetFilePriorityAsync(

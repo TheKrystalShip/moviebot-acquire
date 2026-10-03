@@ -1,4 +1,5 @@
 using TheKrystalShip.MovieBot.Acquire.Download;
+using TheKrystalShip.MovieBot.Acquire.Search;
 using Xunit;
 
 namespace TheKrystalShip.MovieBot.Acquire.Tests;
@@ -95,13 +96,24 @@ public class TorrentTagsTests
 
     [Fact]
     public void A_site_room_round_trips() =>
-        Assert.Equal("a1b2c3d4", TorrentTags.ReadWatch(TorrentTags.Watch("a1b2c3d4")));
+        Assert.Equal(new WatchTag("a1b2c3d4", null), TorrentTags.ReadWatch(TorrentTags.Watch("a1b2c3d4")));
+
+    [Fact]
+    public void A_room_waiting_on_one_episode_round_trips()
+    {
+        var tag = TorrentTags.Watch("a1b2c3d4", new EpisodeNumber(5, 3));
+
+        Assert.Equal("watch:a1b2c3d4:s05e03", tag);
+        Assert.Equal(new WatchTag("a1b2c3d4", new EpisodeNumber(5, 3)), TorrentTags.ReadWatch(tag));
+    }
 
     [Theory]
     [InlineData("watch:")]
     [InlineData("watch:a b")]
     [InlineData("watch:a,b")]
     [InlineData("watch:../x")]
+    [InlineData("watch:room:s05")]
+    [InlineData("watch:room:s05e03:extra")]
     public void A_watch_tag_naming_no_usable_room_reads_as_nothing(string tag) =>
         Assert.Null(TorrentTags.ReadWatch(tag));
 }

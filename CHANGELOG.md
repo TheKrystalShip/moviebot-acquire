@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.28.0
+
+A watch tag names the episode a room waits on, `watch:<room>:s05e03`, since one torrent holds a
+season and another episode of it may be watchable already: `TorrentTags.Watch(room, episode)` writes
+it and `ReadWatch` answers a `WatchTag` with the room and the episode. Picked episodes are fetched
+first-first: the earliest at the client's highest file priority, the next at its second, the rest at
+normal in the torrent's order.
+
 ## 0.27.1
 
 The CLI's `search` and `imdb` list every release they turn down, with the reason and the category the

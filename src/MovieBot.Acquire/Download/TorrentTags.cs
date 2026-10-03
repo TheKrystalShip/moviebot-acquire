@@ -1,4 +1,11 @@
+using System.Globalization;
+using System.Text.RegularExpressions;
+using TheKrystalShip.MovieBot.Acquire.Search;
+
 namespace TheKrystalShip.MovieBot.Acquire.Download;
+
+/// <summary>A room waiting on a download, and the episode of it the room wants when it is a show's.</summary>
+public readonly record struct WatchTag(string Room, EpisodeNumber? Episode);
 
 /// <summary>
 /// The notes processes leave on a torrent for each other.
@@ -12,7 +19,7 @@ namespace TheKrystalShip.MovieBot.Acquire.Download;
 /// processes spelling the same idea differently is silent: nothing throws, the tag is simply
 /// never seen and the work never happens.
 /// </summary>
-public static class TorrentTags
+public static partial class TorrentTags
 {
     /// <summary>
     /// Where to announce the film, once there is something to announce. The channel id follows
@@ -110,13 +117,34 @@ public static class TorrentTags
     /// </summary>
     public const string WatchPrefix = "watch:";
 
-    public static string Watch(string roomId) => $"{WatchPrefix}{roomId}";
+    /// <summary>
+    /// The room, and for a show's torrent the episode the room waits on, <c>watch:a1b2c3d4:s05e03</c>:
+    /// one torrent holds a season, an episode of it may be here already, and the room is waiting on
+    /// the one somebody pressed.
+    /// </summary>
+    public static string Watch(string roomId, EpisodeNumber? episode = null) =>
+        episode is { } e
+            ? string.Create(CultureInfo.InvariantCulture, $"{WatchPrefix}{roomId}:s{e.Season:00}e{e.Episode:00}")
+            : $"{WatchPrefix}{roomId}";
 
-    /// <summary>Reads the room out of a watch tag, or null when it is not one or names no usable room.</summary>
-    public static string? ReadWatch(string tag) =>
-        tag.StartsWith(WatchPrefix, StringComparison.Ordinal) && IsRoomId(tag[WatchPrefix.Length..])
-            ? tag[WatchPrefix.Length..]
+    /// <summary>Reads a watch tag, or null when it is not one or names no usable room.</summary>
+    public static WatchTag? ReadWatch(string tag)
+    {
+        if (!tag.StartsWith(WatchPrefix, StringComparison.Ordinal)) return null;
+
+        var parts = tag[WatchPrefix.Length..].Split(':');
+        if (!IsRoomId(parts[0])) return null;
+        if (parts.Length == 1) return new WatchTag(parts[0], null);
+
+        return parts.Length == 2 && EpisodeTag().Match(parts[1]) is { Success: true } m
+            ? new WatchTag(parts[0], new EpisodeNumber(
+                int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture),
+                int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture)))
             : null;
+    }
+
+    [GeneratedRegex(@"^s(\d{1,3})e(\d{1,4})$")]
+    private static partial Regex EpisodeTag();
 
     /// <summary>Whether a room id can ride on a tag: 1 to 64 letters, digits, <c>-</c> or <c>_</c>.</summary>
     public static bool IsRoomId(string roomId) =>

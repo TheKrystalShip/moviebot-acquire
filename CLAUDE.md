@@ -272,6 +272,10 @@ the library owner's clock and not this one.
   pieces on disk. Files are matched to the client's list by path, never by index, and a torrent
   that fails partway is deleted rather than left stopped. The tracker accounts for the torrent,
   not the files fetched from it, so retention treats a partly fetched pack like any other.
+- **Picked episodes arrive first-first.** The earliest picked is set to the client's highest file
+  priority and the next to its second; the rest stay at normal and follow in the torrent's order,
+  which sequential downloading keeps. The client has these three levels for a file and no more, so
+  an exact ladder is not something to build.
 - **Which file is which episode is `EpisodeFiles`, and nowhere else.** The download picks files
   with it and the hand-off ingests them with it; two readings would fetch an episode the other
   never ingests.
