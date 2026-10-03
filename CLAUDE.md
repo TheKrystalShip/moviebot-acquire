@@ -202,9 +202,10 @@ languages, countries, a rating and its artwork. It is the only thing that talks 
 
 ## Retention invariants
 
-A downloaded film stays for a window of seeding and is then let go, unless somebody keeps it.
-`Retention` answers whether a download is due and how long it has left; who keeps, who prunes and
-what a room holds are the callers' business.
+A download stays for a window of seeding and its torrent and files are then let go. `Retention`
+answers whether a download is due and how long it has left; who removes it, running transcodes and
+what a room holds are the callers' business. How long the transcoded film stays in the library is
+the library owner's clock and not this one.
 
 - **The clock is the client's seeding time, never the calendar.** The tracker credits seeding by
   the announces it receives, which happen only while the client runs and the torrent is active,
@@ -255,10 +256,9 @@ persists it, so the state of that work is kept on the torrent rather than in any
   every pass.
 - **A failure gets its own tag rather than leaving the work tag alone.** Left alone, a failure is
   indistinguishable from work still in progress, and whoever is waiting is told nothing at all.
-- **A keep is a tag, with the keeper beside it.** A keep is only meaningful while the torrent
-  exists, and every process that decides a download's fate already reads its tags, so a file of
-  kept films would be a second place to look that could disagree with the first. `keeper:<id>`
-  is there to be shown, not checked: anyone may keep a film and anyone may let it go.
+- **Tags describe the download, never the film in the library.** A torrent is let go of after its
+  seeding window and the film outlives it, so anything about how long the film stays, a keep
+  among it, is held by whoever owns the library and not on a torrent that will not be there.
 
 ## Conventions
 

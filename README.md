@@ -21,7 +21,7 @@ relative path, so the two repositories are checked out side by side and move tog
 - **Subtitles.** Search and download through the OpenSubtitles API, with checks that a subtitle
   fits the film it is for.
 - **Disk budget and retention.** A ceiling on the download directory, and a seeding window after
-  which a film nobody has kept is let go.
+  which a download is let go.
 
 ## Requirements
 
@@ -174,9 +174,8 @@ so a film deleted by hand is accounted for immediately.
 
 A finished download keeps seeding. Retention measures seeding on the client's own clock, which is
 the time the tracker credits, and a film becomes due for removal once it has seeded for the full
-window, never below the tracker's minimum plus the margin. A film can be kept, which is a tag on its
-torrent. Pruning itself is done by MovieBot's hand-off service, which also knows which films are
-being watched or transcoded.
+window, never below the tracker's minimum plus the margin. Removing the download is done by
+MovieBot's hand-off service, which also knows which films are being watched or transcoded.
 
 ## Repository layout
 
