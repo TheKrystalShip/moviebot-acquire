@@ -14,7 +14,7 @@ public sealed class RetentionOptions
     public const string Section = "Retention";
 
     /// <summary>
-    /// How many days of seeding a film gets before it is pruned, unless somebody keeps it. It has
+    /// How many days of seeding a download gets before it is removed. It has
     /// to sit well above the tracker's minimum: the client's clock can run ahead of the tracker's
     /// whenever an announce fails to land, and the gap between the two is what absorbs that.
     /// </summary>
@@ -50,7 +50,7 @@ public sealed class RetentionOptions
 /// <summary>
 /// The retention rule, asked one download at a time.
 ///
-/// It decides nothing about kept films, running transcodes or occupied rooms: those are facts the
+/// It decides nothing about running transcodes or occupied rooms: those are facts the
 /// caller holds and checks. What this answers is only how the seeding a download has done stands
 /// against the window.
 /// </summary>
