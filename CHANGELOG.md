@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.23.0
+
+`TmdbClient` describes a film from The Movie Database by its IMDb id: credits, certificate in a
+configured country, genres, overview, tagline, languages, countries, TMDB's rating, and the paths of
+its poster, backdrop and cast portraits, which `ImageAsync` fetches at a given width. It is
+configured by `TmdbOptions` (`Tmdb:ReadAccessToken`, a credential set in the environment; without
+one nothing is asked). A refused or unreachable database throws, so a caller keeps what it has.
+
 ## 0.22.0
 
 `SubtitleCandidate.Rating` carries OpenSubtitles' rating out of ten, read from the search's

@@ -151,9 +151,9 @@ only thing that talks to it.
   index that answers the site's own search box is a JSON endpoint and is read as one. The title
   pages are not: they answer anything that is not a browser with an empty `202`, and parsing them
   would be exactly the wrong turn the tracker rule describes.
-- **There is no key and none is needed.** What the index holds — the name, the year, the top
-  billing and the poster — is all of what a message about a film shows. The APIs behind a key add
-  a plot and a rating and nothing else that is currently wanted.
+- **The index needs no key, and names a film.** What it holds — the name, the year, the top billing
+  and the poster — is what a message about a film shows, and what the ingest names a film by.
+  Everything a page about a film shows beyond that comes from the film database below.
 - **A poster is asked for at the size it will be seen.** The originals are a few thousand pixels
   tall; the image host takes the width in the file name, and asking for it is the difference
   between a poster that renders in a message and one that times out on the way.
@@ -162,6 +162,24 @@ only thing that talks to it.
   of what separates a remake from what it remade.
 - **A search that cannot be sure answers with nothing.** A film named wrongly is worse than one
   not named at all, because everything downstream believes it.
+
+## Film database invariants
+
+`TmdbClient` describes a film from The Movie Database: credits, certificate, genres, overview,
+languages, countries, a rating and its artwork. It is the only thing that talks to it.
+
+- **A film is found by its IMDb id.** That is how everything in MovieBot names a film, and the
+  database maps it, so nothing downstream has to learn a second id.
+- **The token is a credential and lives in the environment** (`Tmdb__ReadAccessToken`). Without one
+  nothing is asked and a film is described by the index alone.
+- **Nothing reaches the database but the API, and it asks once.** The client hands out image paths,
+  not URLs: the caller fetches each image once, keeps it and the description on disk, and serves its
+  own copies. Nobody watching ever talks to the database directly.
+- **A refused or unreachable database is an error, not a missing film.** A caller holding an older
+  description keeps it; only "no film under this id" is an answer.
+- **A rating with no votes behind it is a placeholder**, and is no rating.
+- **The database's terms are free personal use with attribution.** Every surface that shows what it
+  served credits it; the client cannot, so it is the surfaces' rule.
 
 ## Disk invariants
 
