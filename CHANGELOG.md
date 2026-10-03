@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.26.0
+
+`TorrentTags.Tell` marks a download whose requester is owed news once it can be watched, or once it
+could not be made watchable; `TorrentTags.TellDirect` beside it says no channel will announce it, so
+the requester is told directly. Whoever tells them takes both off.
+
 ## 0.25.0
 
 Shows. A release whose name carries a season marker (`EpisodeMarker`: `S02`, `S02E04`,

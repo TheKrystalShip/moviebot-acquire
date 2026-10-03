@@ -45,6 +45,19 @@ public static class TorrentTags
             : null;
 
     /// <summary>
+    /// The person who asked is owed a notification once the film can be watched, or once it could
+    /// not be made watchable. Written when the download starts and removed once they have been
+    /// told, so a download that never carried it is one nobody is owed news of.
+    /// </summary>
+    public const string Tell = "tell";
+
+    /// <summary>
+    /// The person who asked is told directly, by a Discord message where no push reaches them,
+    /// because no channel was named to announce the film in. Carried beside <see cref="Tell"/>.
+    /// </summary>
+    public const string TellDirect = "tell:direct";
+
+    /// <summary>
     /// The message showing this download's progress, as a channel and a message within it.
     ///
     /// Kept on the torrent like everything else, so a bot restarted during a download picks the
