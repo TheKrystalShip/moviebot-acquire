@@ -158,6 +158,54 @@ public class TmdbClientTests
         Assert.Null(bytes);
     }
 
+    [Fact]
+    public async Task The_week_s_trending_films_are_named_by_imdb_id_in_the_database_s_order()
+    {
+        const string Trending = """
+            { "page": 1, "results": [
+              { "id": 949, "title": "Heat", "release_date": "1995-12-15", "vote_average": 7.945, "vote_count": 8740, "poster_path": "/heat.jpg" },
+              { "id": 5, "title": "Unlisted", "release_date": "2026-01-01" },
+              { "id": 6, "title": "Grown-up", "adult": true },
+              { "id": 7, "title": "Upcoming", "release_date": "", "vote_average": 0, "vote_count": 0, "poster_path": null }
+            ] }
+            """;
+        var asked = new List<string>();
+        var films = await Client(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            asked.Add(path);
+            return path switch
+            {
+                "/3/trending/movie/week" => Json(Trending),
+                "/3/movie/949/external_ids" => Json("""{ "imdb_id": "tt0113277" }"""),
+                "/3/movie/5/external_ids" => Json("""{ "imdb_id": null }"""),
+                "/3/movie/7/external_ids" => Json("""{ "imdb_id": "tt9999999" }"""),
+                _ => Json("{}", HttpStatusCode.NotFound),
+            };
+        }).TrendingFilmsAsync(CancellationToken.None);
+
+        Assert.Equal(["tt0113277", "tt9999999"], films.Select(f => f.ImdbId));
+        Assert.DoesNotContain("/3/movie/6/external_ids", asked);
+
+        var heat = films[0];
+        Assert.Equal(("Heat", 1995, 7.9, 8740, "/heat.jpg"), (heat.Title, heat.Year, heat.Rating, heat.Votes, heat.PosterPath));
+        var upcoming = films[1];
+        Assert.Equal(((int?)null, (double?)null, (string?)null), (upcoming.Year, upcoming.Rating, upcoming.PosterPath));
+    }
+
+    [Fact]
+    public async Task A_show_s_trending_entry_is_read_from_its_name_and_first_air_date()
+    {
+        var shows = await Client(request => request.RequestUri!.AbsolutePath switch
+        {
+            "/3/trending/tv/week" => Json("""{ "results": [ { "id": 42, "name": "Slow Horses", "first_air_date": "2022-04-01" } ] }"""),
+            "/3/tv/42/external_ids" => Json("""{ "imdb_id": "tt5875444" }"""),
+            _ => Json("{}", HttpStatusCode.NotFound),
+        }).TrendingShowsAsync(CancellationToken.None);
+
+        Assert.Equal(("tt5875444", "Slow Horses", (int?)2022), (shows[0].ImdbId, shows[0].Title, shows[0].Year));
+    }
+
     private sealed class Handler(Func<HttpRequestMessage, HttpResponseMessage> answer) : HttpMessageHandler
     {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) =>

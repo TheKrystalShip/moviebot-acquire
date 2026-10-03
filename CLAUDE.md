@@ -193,7 +193,9 @@ season's episodes with their stills. It is the only thing that talks to it.
 
 - **A film or a show is found by its IMDb id.** That is how everything in MovieBot names one, and
   the database maps it, so nothing downstream has to learn a second id. A season is asked for by
-  the show's database id, which the show's description carries.
+  the show's database id, which the show's description carries. The week's trending films and shows
+  (`TrendingFilmsAsync`, `TrendingShowsAsync`) come back named by the database's own id, so each
+  entry's IMDb id is asked for in turn; an entry without one, or an adult one, is left out.
 - **The token is a credential and lives in the environment** (`Tmdb__ReadAccessToken`). Without one
   nothing is asked and a film is described by the index alone.
 - **Nothing reaches the database but the API, and it asks once.** The client hands out image paths,

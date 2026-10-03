@@ -94,6 +94,52 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
         return answer is null ? null : ReadSeason(answer);
     }
 
+    /// <summary>
+    /// The films the database counts as trending this week, most first. Throws
+    /// <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public Task<IReadOnlyList<TrendingTitle>> TrendingFilmsAsync(CancellationToken ct) => TrendingAsync("movie", ct);
+
+    /// <summary>The shows the database counts as trending this week, most first, on the same terms.</summary>
+    public Task<IReadOnlyList<TrendingTitle>> TrendingShowsAsync(CancellationToken ct) => TrendingAsync("tv", ct);
+
+    /// <summary>
+    /// One week's trending list, each entry's IMDb id asked for in turn: the list names a title by
+    /// the database's own id alone. An entry with no IMDb id is one nothing here could lead to, and
+    /// an adult one is never shown, so neither is kept.
+    /// </summary>
+    private async Task<IReadOnlyList<TrendingTitle>> TrendingAsync(string kind, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured) return [];
+
+        var language = Uri.EscapeDataString(settings.Language);
+        var page = await GetAsync($"trending/{kind}/week?language={language}", TmdbJsonContext.Default.TmdbTrendingPage, ct);
+
+        var titles = new List<TrendingTitle>();
+        foreach (var item in page?.Results ?? [])
+        {
+            var name = item.Title ?? item.Name;
+            if (item.Adult == true || string.IsNullOrWhiteSpace(name)) continue;
+
+            var ids = await GetAsync($"{kind}/{item.Id}/external_ids", TmdbJsonContext.Default.TmdbExternalIds, ct);
+            if (ImdbId.ToTag(ImdbId.ToNumber(ids?.ImdbId)) is not { } tag) continue;
+
+            var date = item.ReleaseDate ?? item.FirstAirDate;
+            titles.Add(new TrendingTitle
+            {
+                TmdbId = item.Id,
+                ImdbId = tag,
+                Title = name.Trim(),
+                Year = date is { Length: >= 4 } && int.TryParse(date[..4], out var year) ? year : null,
+                Rating = item.VoteCount is > 0 && item.VoteAverage is > 0 ? Math.Round(item.VoteAverage.Value, 1) : null,
+                Votes = item.VoteCount ?? 0,
+                PosterPath = string.IsNullOrEmpty(item.PosterPath) ? null : item.PosterPath,
+            });
+        }
+        return titles;
+    }
+
     /// <summary>The show's description, from what the database answered.</summary>
     public static ShowDetails ReadShow(TmdbTv tv, string imdbId, TmdbOptions settings)
     {

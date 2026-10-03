@@ -98,6 +98,30 @@ public sealed record TmdbFound
     [JsonPropertyName("id")] public int Id { get; init; }
 }
 
+public sealed record TmdbTrendingPage
+{
+    [JsonPropertyName("results")] public IReadOnlyList<TmdbTrendingItem>? Results { get; init; }
+}
+
+/// <summary>A film carries <c>title</c> and <c>release_date</c>, a show <c>name</c> and <c>first_air_date</c>.</summary>
+public sealed record TmdbTrendingItem
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("title")] public string? Title { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("release_date")] public string? ReleaseDate { get; init; }
+    [JsonPropertyName("first_air_date")] public string? FirstAirDate { get; init; }
+    [JsonPropertyName("vote_average")] public double? VoteAverage { get; init; }
+    [JsonPropertyName("vote_count")] public int? VoteCount { get; init; }
+    [JsonPropertyName("poster_path")] public string? PosterPath { get; init; }
+    [JsonPropertyName("adult")] public bool? Adult { get; init; }
+}
+
+public sealed record TmdbExternalIds
+{
+    [JsonPropertyName("imdb_id")] public string? ImdbId { get; init; }
+}
+
 public sealed record TmdbMovie
 {
     [JsonPropertyName("id")] public int Id { get; init; }
@@ -175,4 +199,6 @@ public sealed record TmdbRelease
 [JsonSerializable(typeof(TmdbMovie))]
 [JsonSerializable(typeof(TmdbTv))]
 [JsonSerializable(typeof(TmdbTvSeason))]
+[JsonSerializable(typeof(TmdbTrendingPage))]
+[JsonSerializable(typeof(TmdbExternalIds))]
 public partial class TmdbJsonContext : JsonSerializerContext;

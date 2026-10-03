@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.30.0
+
+`TmdbClient.TrendingFilmsAsync` and `TrendingShowsAsync` answer the film database's trending films and
+shows this week, most first, each a `TrendingTitle` named by its IMDb id with its title, year, rating
+and poster path. An entry the database holds no IMDb id for, and an adult one, is left out.
+
 ## 0.29.0
 
 A show's description carries the episode airing next and the one aired last
