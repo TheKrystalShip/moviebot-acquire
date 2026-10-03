@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.24.0
+
+A keep is no longer a torrent tag: `TorrentTags` describes the download alone, and how long a film
+stays in the library, a keep among it, belongs to whoever owns the library. `Retention` answers the
+tracker's clock for the source only.
+
 ## 0.23.0
 
 `TmdbClient` describes a film from The Movie Database by its IMDb id: credits, certificate in a
