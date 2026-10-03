@@ -101,6 +101,29 @@ public static class TorrentTags
             : null;
 
     /// <summary>
+    /// The site room the film is to play in once it can be watched, by the room's own id.
+    ///
+    /// The site's counterpart of <see cref="RoomPrefix"/>: somebody pressed Watch now on a film that
+    /// is not here, and a room is waiting on it. A site room has no Discord channel, so it is the
+    /// API that loads the film into it rather than the bot. Room ids are short and drawn from
+    /// letters, digits, <c>-</c> and <c>_</c>, which a tag carries as they are.
+    /// </summary>
+    public const string WatchPrefix = "watch:";
+
+    public static string Watch(string roomId) => $"{WatchPrefix}{roomId}";
+
+    /// <summary>Reads the room out of a watch tag, or null when it is not one or names no usable room.</summary>
+    public static string? ReadWatch(string tag) =>
+        tag.StartsWith(WatchPrefix, StringComparison.Ordinal) && IsRoomId(tag[WatchPrefix.Length..])
+            ? tag[WatchPrefix.Length..]
+            : null;
+
+    /// <summary>Whether a room id can ride on a tag: 1 to 64 letters, digits, <c>-</c> or <c>_</c>.</summary>
+    public static bool IsRoomId(string roomId) =>
+        roomId.Length is > 0 and <= 64
+        && roomId.All(c => char.IsAsciiLetterOrDigit(c) || c is '-' or '_');
+
+    /// <summary>
     /// The id the film goes under in the library, written by the process that named it there.
     ///
     /// A surface that wants to open the film once it is watchable needs to know which library

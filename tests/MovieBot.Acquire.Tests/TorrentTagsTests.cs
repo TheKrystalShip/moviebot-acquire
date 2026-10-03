@@ -90,5 +90,18 @@ public class TorrentTagsTests
         Assert.Null(TorrentTags.ReadProgress(tag));
         Assert.Null(TorrentTags.ReadRoom(tag));
         Assert.Null(TorrentTags.ReadLibrary(tag));
+        Assert.Null(TorrentTags.ReadWatch(tag));
     }
+
+    [Fact]
+    public void A_site_room_round_trips() =>
+        Assert.Equal("a1b2c3d4", TorrentTags.ReadWatch(TorrentTags.Watch("a1b2c3d4")));
+
+    [Theory]
+    [InlineData("watch:")]
+    [InlineData("watch:a b")]
+    [InlineData("watch:a,b")]
+    [InlineData("watch:../x")]
+    public void A_watch_tag_naming_no_usable_room_reads_as_nothing(string tag) =>
+        Assert.Null(TorrentTags.ReadWatch(tag));
 }

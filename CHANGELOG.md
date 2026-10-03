@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.27.0
+
+`TorrentTags.Watch` names the site room a download is to play in once it can be watched, the site's
+counterpart of `room:`; `ReadWatch` reads it back and `IsRoomId` says which room ids a tag can carry
+(1 to 64 letters, digits, `-` or `_`).
+
 ## 0.26.0
 
 `TorrentTags.Tell` marks a download whose requester is owed news once it can be watched, or once it
