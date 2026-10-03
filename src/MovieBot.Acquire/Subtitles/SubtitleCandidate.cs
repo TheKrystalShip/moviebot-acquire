@@ -22,6 +22,9 @@ public sealed record SubtitleCandidate
 
     public int DownloadCount { get; init; }
 
+    /// <summary>The index's rating out of ten, or null when nobody has voted on this subtitle.</summary>
+    public double? Rating { get; init; }
+
     public bool HearingImpaired { get; init; }
 
     /// <summary>Subtitles for the foreign-language lines only, not for the whole film.</summary>
@@ -63,6 +66,8 @@ public sealed record SubtitleCandidate
             // would say nothing more than false already says.
             Fps = a.Fps ?? 0,
             DownloadCount = a.DownloadCount ?? 0,
+            // A rating with no votes behind it is the index's placeholder, not anybody's opinion.
+            Rating = a.Votes is > 0 && a.Ratings is > 0 ? a.Ratings : null,
             HearingImpaired = a.HearingImpaired ?? false,
             ForeignPartsOnly = a.ForeignPartsOnly ?? false,
             FromTrusted = a.FromTrusted ?? false,

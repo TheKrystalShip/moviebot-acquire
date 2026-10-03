@@ -55,6 +55,31 @@ public class OpenSubtitlesPayloadTests
         Assert.Equal(1, candidate.CdCount);
     }
 
+    [Theory]
+    [InlineData("8.5", "12", 8.5)]
+    [InlineData("0.0", "0", null)]
+    [InlineData("6.0", "0", null)]
+    [InlineData("null", "null", null)]
+    public void A_rating_counts_only_with_votes_behind_it(string ratings, string votes, double? expected)
+    {
+        var response = Read(
+            $$"""
+            {
+              "total_pages": 1, "total_count": 1, "page": 1,
+              "data": [{
+                "id": "1",
+                "attributes": {
+                  "language": "es", "release": "Some.Film.2024.1080p.WEB-DL",
+                  "ratings": {{ratings}}, "votes": {{votes}},
+                  "files": [{ "file_id": 5, "file_name": "some-film.srt" }]
+                }
+              }]
+            }
+            """);
+
+        Assert.Equal(expected, SubtitleCandidate.From(response.Data[0])!.Rating);
+    }
+
     /// <summary>
     /// One null among otherwise ordinary fields, in the middle of a page. The rows around it have
     /// to survive it.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.22.0
+
+`SubtitleCandidate.Rating` carries OpenSubtitles' rating out of ten, read from the search's
+`ratings` and `votes`; a subtitle nobody has voted on has none.
+
 ## 0.21.0
 
 The disk budget measures free space on the volume the download directory is on. It asked the

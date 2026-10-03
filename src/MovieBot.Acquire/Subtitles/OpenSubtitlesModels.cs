@@ -34,6 +34,10 @@ public sealed record OpenSubtitlesAttributes
     [JsonPropertyName("release")] public string? Release { get; init; }
     [JsonPropertyName("download_count")] public int? DownloadCount { get; init; }
 
+    /// <summary>The index's own rating out of ten, from its users' votes. Zero votes is no rating.</summary>
+    [JsonPropertyName("ratings")] public double? Ratings { get; init; }
+    [JsonPropertyName("votes")] public int? Votes { get; init; }
+
     /// <summary>Absent when the uploader did not declare one, which is common and not a fault.</summary>
     [JsonPropertyName("fps")] public double? Fps { get; init; }
 
