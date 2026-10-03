@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.27.1
+
+The CLI's `search` and `imdb` list every release they turn down, with the reason and the category the
+tracker filed it under, on stderr: a film offered nothing because of its category is settled in the
+host's category list, and this is where the category is read.
+
 ## 0.27.0
 
 `TorrentTags.Watch` names the site room a download is to play in once it can be watched, the site's

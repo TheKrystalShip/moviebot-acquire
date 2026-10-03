@@ -139,6 +139,7 @@ int Report(RankedReleases ranked)
     if (ranked.Candidates.Count == 0)
     {
         Console.Error.WriteLine(ranked.EmptyExplanation);
+        ListRejected(ranked.Rejected);
         return 1;
     }
 
@@ -163,9 +164,19 @@ int Report(RankedReleases ranked)
             .OrderByDescending(g => g.Count())
             .Select(g => $"{g.Count()} {g.Key}");
         Console.Error.WriteLine($"filtered out: {string.Join(", ", counts)}");
+        ListRejected(ranked.Rejected);
     }
 
     return 0;
+}
+
+// Each release turned down, with why and the category the tracker filed it under: a film offered
+// nothing because of its category is settled by the host's category list, and this is how the
+// category is found.
+void ListRejected(IReadOnlyList<RejectedRelease> rejected)
+{
+    foreach (var r in rejected)
+        Console.Error.WriteLine($"  {r.Reason,-10} category={r.Release.Category}  {r.Release.ReleaseName}");
 }
 
 async Task<int> GetAsync(string[] rest)
