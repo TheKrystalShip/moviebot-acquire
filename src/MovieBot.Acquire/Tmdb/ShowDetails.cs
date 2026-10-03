@@ -58,9 +58,28 @@ public sealed record ShowDetails
     /// <summary>The seasons, in order; season 0 is the database's home for specials.</summary>
     public IReadOnlyList<ShowSeason> Seasons { get; init; } = [];
 
+    /// <summary>The episode the database expects to air next; null when it names none.</summary>
+    public AiringEpisode? NextEpisodeToAir { get; init; }
+
+    /// <summary>The latest episode the database says has aired; null when it names none.</summary>
+    public AiringEpisode? LastEpisodeToAir { get; init; }
+
     public string? PosterPath { get; init; }
 
     public string? BackdropPath { get; init; }
+}
+
+/// <summary>An episode as the show's own description names it: where it falls and when it airs.</summary>
+public sealed record AiringEpisode
+{
+    public required int Season { get; init; }
+
+    public required int Number { get; init; }
+
+    public string? Name { get; init; }
+
+    /// <summary>The date it airs, <c>2025-01-16</c>; a date, with no time or zone.</summary>
+    public string? AirDate { get; init; }
 }
 
 /// <summary>One season as the show lists it, before its episodes are asked for.</summary>

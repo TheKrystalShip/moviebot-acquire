@@ -102,6 +102,36 @@ public class TmdbShowTests
     }
 
     [Fact]
+    public async Task The_episodes_the_database_says_aired_last_and_airs_next_are_read()
+    {
+        var airing = Show.Replace("\"seasons\": [", """
+            "last_episode_to_air": { "season_number": 2, "episode_number": 9, "name": " Cold Harbor ", "air_date": "2025-03-13" },
+            "next_episode_to_air": { "season_number": 2, "episode_number": 10, "name": "", "air_date": "2025-03-20" },
+            "seasons": [
+            """);
+        var show = await Client(r => Json(r.RequestUri!.AbsolutePath.Contains("/find/") ? Find : airing))
+            .ShowAsync("tt11280740", CancellationToken.None);
+
+        Assert.Equal(2, show!.LastEpisodeToAir!.Season);
+        Assert.Equal(9, show.LastEpisodeToAir.Number);
+        Assert.Equal("Cold Harbor", show.LastEpisodeToAir.Name);
+        Assert.Equal("2025-03-13", show.LastEpisodeToAir.AirDate);
+        Assert.Equal(10, show.NextEpisodeToAir!.Number);
+        Assert.Null(show.NextEpisodeToAir.Name);
+        Assert.Equal("2025-03-20", show.NextEpisodeToAir.AirDate);
+    }
+
+    [Fact]
+    public async Task A_show_the_database_names_no_episodes_for_has_none()
+    {
+        var show = await Client(r => Json(r.RequestUri!.AbsolutePath.Contains("/find/") ? Find : Show))
+            .ShowAsync("tt11280740", CancellationToken.None);
+
+        Assert.Null(show!.NextEpisodeToAir);
+        Assert.Null(show.LastEpisodeToAir);
+    }
+
+    [Fact]
     public async Task A_film_s_id_is_no_show()
     {
         var show = await Client(_ => Json("""{ "movie_results": [ { "id": 949 } ], "tv_results": [] }"""))

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.29.0
+
+A show's description carries the episode airing next and the one aired last
+(`ShowDetails.NextEpisodeToAir`, `LastEpisodeToAir`, each an `AiringEpisode` with its season, number,
+name and air date), read from the film database's `next_episode_to_air` and `last_episode_to_air`.
+
 ## 0.28.0
 
 A watch tag names the episode a room waits on, `watch:<room>:s05e03`, since one torrent holds a

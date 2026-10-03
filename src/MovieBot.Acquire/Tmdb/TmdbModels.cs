@@ -33,6 +33,8 @@ public sealed record TmdbTv
     [JsonPropertyName("networks")] public IReadOnlyList<TmdbNamed>? Networks { get; init; }
     [JsonPropertyName("created_by")] public IReadOnlyList<TmdbNamed>? CreatedBy { get; init; }
     [JsonPropertyName("seasons")] public IReadOnlyList<TmdbTvSeason>? Seasons { get; init; }
+    [JsonPropertyName("next_episode_to_air")] public TmdbEpisode? NextEpisodeToAir { get; init; }
+    [JsonPropertyName("last_episode_to_air")] public TmdbEpisode? LastEpisodeToAir { get; init; }
     [JsonPropertyName("aggregate_credits")] public TmdbAggregateCredits? AggregateCredits { get; init; }
     [JsonPropertyName("content_ratings")] public TmdbContentRatings? ContentRatings { get; init; }
 }

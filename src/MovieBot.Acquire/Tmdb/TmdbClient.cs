@@ -150,10 +150,24 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
                     PosterPath = Image(s.PosterPath),
                 })
                 .ToList(),
+            NextEpisodeToAir = Airing(tv.NextEpisodeToAir),
+            LastEpisodeToAir = Airing(tv.LastEpisodeToAir),
             PosterPath = Image(tv.PosterPath),
             BackdropPath = Image(tv.BackdropPath),
         };
     }
+
+    /// <summary>An episode a show's description names, or null when it names none or one without a number.</summary>
+    private static AiringEpisode? Airing(TmdbEpisode? episode) =>
+        episode is { EpisodeNumber: > 0 }
+            ? new AiringEpisode
+            {
+                Season = episode.SeasonNumber,
+                Number = episode.EpisodeNumber,
+                Name = string.IsNullOrWhiteSpace(episode.Name) ? null : episode.Name.Trim(),
+                AirDate = string.IsNullOrEmpty(episode.AirDate) ? null : episode.AirDate,
+            }
+            : null;
 
     /// <summary>A season's description, from what the database answered.</summary>
     public static SeasonDetails ReadSeason(TmdbTvSeason season) => new()
