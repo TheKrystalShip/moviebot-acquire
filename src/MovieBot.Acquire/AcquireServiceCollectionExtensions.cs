@@ -48,6 +48,13 @@ public static class AcquireServiceCollectionExtensions
         });
 
         services.AddSingleton<ReleaseRanker>();
+        // The ledger sits under the media root, which the settings name twice (the API reads
+        // Media:Root, the hand-off writes Handoff:MediaRoot); they are one directory.
+        services.Configure<TranscodeLedgerOptions>(o =>
+            o.MediaRoot = configuration["Media:Root"] is { Length: > 0 } root
+                ? root
+                : configuration["Handoff:MediaRoot"] ?? "");
+        services.AddSingleton<TranscodeLedger>();
         services.AddSingleton<DiskBudget>();
 
         services.Configure<QBittorrentOptions>(configuration.GetSection(QBittorrentOptions.Section));

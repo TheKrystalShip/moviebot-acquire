@@ -47,10 +47,13 @@ public sealed class DownloadOptions
     ///
     /// The download is not the last thing written for a film. Its transcode is written while the
     /// source sits seeding, and where the media root shares the volume the two together are what
-    /// has to fit: a download accepted into exactly the space it needs leaves the transcode to
-    /// stop partway with the disk full, in front of a room. A transcode is sized by the film's
-    /// running time at a fixed bitrate rather than by the source, and a long film runs to about
-    /// 26 GiB. Zero for a volume nothing else writes to.
+    /// has to fit. The transcode holds no claim on the volume until its ingest starts, which is
+    /// part of the way into the download, so this is what the film just admitted is given in the
+    /// meantime: a download accepted into exactly the space it needs would otherwise leave its
+    /// transcode with nowhere to go but the cold disk, or with no disk at all on a host that has
+    /// none. A transcode is sized by the film's running time at a fixed bitrate rather than by
+    /// the source, and a long film runs to about 26 GiB. The claims of transcodes already running
+    /// are subtracted on top of this, as measured. Zero for a volume nothing else writes to.
     /// </summary>
     public double ReservedGiB { get; set; } = 30;
 

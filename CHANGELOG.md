@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.31.0
+
+`DiskBudget` is the one account of what is promised on a volume. A running transcode holds a claim in
+the `TranscodeLedger`, files under `.transcode-reservations` in the media root written by the
+hand-off, and a download's headroom subtracts what each claim on its volume has still to write.
+`DiskBudget.ReadVolume` gives a transcode's placement any volume's free space less the claims on it
+and, where the downloads share it, the downloads still arriving; `Volumes.MountOf` names the volume a
+path is on. A ledger that cannot be read or written is a logged warning and counts as no claims.
+
 ## 0.30.0
 
 `TmdbClient.TrendingFilmsAsync` and `TrendingShowsAsync` answer the film database's trending films and

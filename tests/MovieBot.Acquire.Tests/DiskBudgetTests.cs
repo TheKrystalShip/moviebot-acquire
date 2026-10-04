@@ -10,10 +10,14 @@ public class DiskBudgetTests
     private const long GiB = 1L << 30;
 
     private static readonly DiskBudget Budget = new(
-        Options.Create(new DownloadOptions()), NullLogger<DiskBudget>.Instance);
+        Options.Create(new DownloadOptions()),
+        new TranscodeLedger(Options.Create(new TranscodeLedgerOptions()), NullLogger<TranscodeLedger>.Instance),
+        NullLogger<DiskBudget>.Instance);
 
-    private static BudgetReading Reading(double usedGiB, double freeGiB, double reservedGiB = 30) =>
-        new((long)(usedGiB * GiB), 300 * GiB, 250 * GiB, (long)(freeGiB * GiB), (long)(reservedGiB * GiB));
+    private static BudgetReading Reading(
+        double usedGiB, double freeGiB, double reservedGiB = 30, double transcodeGiB = 0) =>
+        new((long)(usedGiB * GiB), 300 * GiB, 250 * GiB, (long)(freeGiB * GiB), (long)(reservedGiB * GiB),
+            (long)(transcodeGiB * GiB));
 
     [Fact]
     public void Refuses_a_download_that_fits_the_volume_only_by_eating_the_reserve()
@@ -65,4 +69,42 @@ public class DiskBudgetTests
 
         Assert.True(verdict.Allowed);
     }
+
+    [Fact]
+    public void A_running_transcodes_unwritten_remainder_is_taken_from_a_downloads_headroom()
+    {
+        // 60 GiB free and a 12 GiB source fits; with 25 GiB still to be written by a running
+        // transcode only 5 GiB past the reserve is left.
+        Assert.True(Budget.Judge(Reading(usedGiB: 100, freeGiB: 60), 12 * GiB).Allowed);
+
+        var verdict = Budget.Judge(Reading(usedGiB: 100, freeGiB: 60, transcodeGiB: 25), 12 * GiB);
+
+        Assert.False(verdict.Allowed);
+        Assert.Equal(5 * GiB, verdict.Reading.VolumeHeadroomBytes);
+    }
+
+    [Fact]
+    public void The_summary_names_running_transcodes_only_when_there_are_some()
+    {
+        Assert.DoesNotContain("transcodes", Reading(usedGiB: 10, freeGiB: 100).Summary);
+        Assert.Contains("25 GiB still to be written", Reading(usedGiB: 10, freeGiB: 100, transcodeGiB: 25).Summary);
+    }
+
+    [Fact]
+    public void Pending_downloads_are_what_has_still_to_arrive()
+    {
+        DownloadStatus Torrent(string hash, DownloadState state, double progress) => new()
+        {
+            Hash = hash, Name = hash, State = state, Progress = progress, SizeBytes = 10 * GiB
+        };
+
+        var pending = DiskBudget.PendingBytes([
+            Torrent("a", DownloadState.Downloading, 0.25),
+            Torrent("b", DownloadState.Complete, 1),
+            Torrent("c", DownloadState.Stalled, 0)
+        ]);
+
+        Assert.Equal((long)(7.5 * GiB) + 10 * GiB, pending);
+    }
 }
+

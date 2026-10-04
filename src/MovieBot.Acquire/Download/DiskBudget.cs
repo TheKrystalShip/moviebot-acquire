@@ -17,20 +17,28 @@ public enum BudgetState { Ok = 0, Warning = 1, Full = 2 }
 /// that produces a half-written file rather than a refusal.
 /// </param>
 /// <param name="ReservedBytes">
-/// What the volume keeps free after a download lands, for what the rest of the pipeline writes
-/// beside the downloads.
+/// What the volume keeps free after a download lands, for the transcode of the film it admits,
+/// which holds no claim of its own until its ingest starts.
+/// </param>
+/// <param name="TranscodeOutstandingBytes">
+/// What the transcodes already holding a claim on this volume have still to write.
 /// </param>
 public sealed record BudgetReading(
     long UsedBytes,
     long MaximumBytes,
     long WarningBytes,
     long FreeOnVolumeBytes,
-    long ReservedBytes)
+    long ReservedBytes,
+    long TranscodeOutstandingBytes = 0)
 {
     public long RemainingBytes => Math.Max(0, MaximumBytes - UsedBytes);
 
-    /// <summary>What the volume can take before it eats into the reserve.</summary>
-    public long VolumeHeadroomBytes => Math.Max(0, FreeOnVolumeBytes - ReservedBytes);
+    /// <summary>
+    /// What the volume can take before it eats into a claim: the running transcodes' unwritten
+    /// remainder and the reserve.
+    /// </summary>
+    public long VolumeHeadroomBytes =>
+        Math.Max(0, FreeOnVolumeBytes - ReservedBytes - TranscodeOutstandingBytes);
 
     /// <summary>What can actually be written: the budget or the volume, whichever runs out first.</summary>
     public long HeadroomBytes => Math.Min(RemainingBytes, VolumeHeadroomBytes);
@@ -48,10 +56,14 @@ public sealed record BudgetReading(
     public double MaximumGiB => MaximumBytes / (double)(1L << 30);
     public double HeadroomGiB => HeadroomBytes / (double)(1L << 30);
     public double ReservedGiB => ReservedBytes / (double)(1L << 30);
+    public double TranscodeOutstandingGiB => TranscodeOutstandingBytes / (double)(1L << 30);
 
     public string Summary =>
         $"{UsedGiB:0.#} of {MaximumGiB:0.#} GiB used, {HeadroomGiB:0.#} GiB free to write "
-        + $"with {ReservedGiB:0.#} GiB kept free on the volume";
+        + $"with {ReservedGiB:0.#} GiB kept free on the volume"
+        + (TranscodeOutstandingBytes > 0
+            ? $" and {TranscodeOutstandingGiB:0.#} GiB still to be written by running transcodes"
+            : "");
 }
 
 /// <summary>Whether a download may start, and what to say when it may not.</summary>
@@ -64,10 +76,46 @@ public sealed record BudgetVerdict(bool Allowed, BudgetReading Reading, string? 
 /// complete. A running total drifts the moment somebody deletes a film by hand, and it drifts
 /// silently: the first sign would be a refused download with plenty of disk free, or a full
 /// volume under a budget that says there is room.
+///
+/// It is also the one account of what is promised on a volume. Running transcodes hold claims in
+/// the <see cref="TranscodeLedger"/>, which this subtracts from a download's headroom and from the
+/// room a transcode's placement is judged against (<see cref="ReadVolume"/>), so downloads and
+/// transcodes never each count the free space as their own.
 /// </summary>
-public sealed class DiskBudget(IOptions<DownloadOptions> options, ILogger<DiskBudget> logger)
+public sealed class DiskBudget(
+    IOptions<DownloadOptions> options, TranscodeLedger ledger, ILogger<DiskBudget> logger)
 {
     private readonly DownloadOptions _options = options.Value;
+
+    /// <summary>
+    /// What a volume has left for a transcode: its free space less the transcodes still writing
+    /// to it and, where the downloads share the volume, the downloads still arriving.
+    /// </summary>
+    /// <param name="path">Any path on the volume; typically a media root.</param>
+    /// <param name="pendingDownloadBytes">
+    /// What the downloads in flight have still to fetch, from <see cref="PendingBytes"/>.
+    /// </param>
+    public VolumeRoom ReadVolume(string path, long pendingDownloadBytes)
+    {
+        var mounts = DriveInfo.GetDrives().Select(d => d.Name).ToList();
+        var volume = Volumes.MountOf(path, mounts);
+
+        return new VolumeRoom(
+            new DriveInfo(path).AvailableFreeSpace,
+            OutstandingOn(volume, mounts),
+            Volumes.MountOf(_options.ResolveRoot(), mounts) == volume ? pendingDownloadBytes : 0);
+    }
+
+    /// <summary>What the downloads still arriving have still to fetch.</summary>
+    public static long PendingBytes(IEnumerable<DownloadStatus> downloads) =>
+        downloads
+            .Where(d => d.State != DownloadState.Complete)
+            .Sum(d => (long)(d.SizeBytes * Math.Clamp(1 - d.Progress, 0, 1)));
+
+    private long OutstandingOn(string volume, IReadOnlyCollection<string> mounts) =>
+        ledger.List()
+            .Where(r => Volumes.MountOf(r.Root, mounts) == volume)
+            .Sum(r => r.OutstandingBytes());
 
     /// <summary>Measures the directory now. Creates it when it does not yet exist.</summary>
     public BudgetReading Read()
@@ -99,12 +147,15 @@ public sealed class DiskBudget(IOptions<DownloadOptions> options, ILogger<DiskBu
         // root is "/" on every Unix path, and the download directory is often on another mount.
         var free = new DriveInfo(root).AvailableFreeSpace;
 
+        var mounts = DriveInfo.GetDrives().Select(d => d.Name).ToList();
+
         return new BudgetReading(
             used,
             (long)(_options.MaximumGiB * (1L << 30)),
             (long)(_options.WarningGiB * (1L << 30)),
             free,
-            (long)(_options.ReservedGiB * (1L << 30)));
+            (long)(_options.ReservedGiB * (1L << 30)),
+            OutstandingOn(Volumes.MountOf(root, mounts), mounts));
     }
 
     /// <summary>

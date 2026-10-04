@@ -222,9 +222,25 @@ season's episodes with their stills. It is the only thing that talks to it.
   still warns and still reads full.
 - **A download is not the last thing written for a film.** Its transcode lands while the source
   seeds, on the same volume wherever the media root shares it, so the volume keeps
-  `Download:ReservedGiB` free after a download lands. A download that fits only by eating into it
-  is refused before the tracker is asked, instead of a transcode stopping partway in front of a
-  room.
+  `Download:ReservedGiB` free after a download lands. The transcode holds no claim of its own until
+  its ingest starts, partway into the download, and a host with no cold disk has nowhere else to put
+  it, so the reserve is what a film just admitted is given in the meantime. A download that fits
+  only by eating into it is refused before the tracker is asked, instead of a transcode stopping
+  partway in front of a room.
+- **`DiskBudget` is the one account of what is promised on a volume.** A running transcode holds a
+  claim in the `TranscodeLedger` (files under `.transcode-reservations` in the media root, written
+  by the hand-off and read by every process that starts a download; the root is `Media:Root`, or
+  `Handoff:MediaRoot` where that is blank, which name one directory). The ledger is under the media
+  root because its one writer can always write there, and the dot keeps every listing of titles from
+  taking it for one. A ledger that cannot be read or written never blocks a download or a transcode:
+  a missing directory is an empty ledger, and an unreadable one, an unconfigured media root or a
+  claim that cannot be written is a logged warning and counts as no claims. A claim counts for what
+  the transcode has still to write: its size less what its title directory already holds, because
+  the written part is already gone from the free space. A download's headroom subtracts the claims on
+  its volume, and `ReadVolume` gives a transcode's placement the free space of any volume less the
+  claims on it and, where the downloads share it, the downloads still arriving (`PendingBytes`).
+  Which volume a path is on is its longest mount point (`Volumes.MountOf`), so a media root on the
+  download volume is judged against the downloads and one on another volume is not.
 
 ## Retention invariants
 
