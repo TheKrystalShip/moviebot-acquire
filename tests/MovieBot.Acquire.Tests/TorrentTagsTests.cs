@@ -16,18 +16,38 @@ public class TorrentTagsTests
         Assert.Equal(385731869163126784UL,
             TorrentTags.ReadNotifyChannel(TorrentTags.Notify(385731869163126784UL)));
 
+    [Theory]
+    [InlineData("local:usr_01JABCDEF")]
+    [InlineData("https://idp.invalid/|a,b%2C")]
+    public void A_requester_survives_the_round_trip(string account) =>
+        Assert.Equal(account, TorrentTags.ReadRequester(TorrentTags.Requester(account)));
+
     [Fact]
-    public void A_requester_survives_the_round_trip() =>
-        Assert.Equal(214987225747587072UL,
-            TorrentTags.ReadRequester(TorrentTags.Requester(214987225747587072UL)));
+    public void A_requester_tag_carries_no_comma()
+    {
+        // The torrent client splits a tag list on commas, so one in an account would cut the tag in two.
+        Assert.DoesNotContain(',', TorrentTags.Requester("a,b"));
+    }
 
     [Fact]
     public void A_requester_tag_is_not_read_as_a_channel() =>
-        Assert.Null(TorrentTags.ReadNotifyChannel(TorrentTags.Requester(1234567890UL)));
+        Assert.Null(TorrentTags.ReadNotifyChannel(TorrentTags.Requester("local:usr_1")));
 
     [Fact]
     public void A_channel_tag_is_not_read_as_a_requester() =>
         Assert.Null(TorrentTags.ReadRequester(TorrentTags.Notify(1234567890UL)));
+
+    [Fact]
+    public void A_mention_survives_the_round_trip() =>
+        Assert.Equal(214987225747587072UL, TorrentTags.ReadMention(TorrentTags.Mention(214987225747587072UL)));
+
+    [Fact]
+    public void A_mention_is_not_read_as_a_requester_or_a_channel()
+    {
+        Assert.Null(TorrentTags.ReadRequester(TorrentTags.Mention(1234567890UL)));
+        Assert.Null(TorrentTags.ReadNotifyChannel(TorrentTags.Mention(1234567890UL)));
+        Assert.Null(TorrentTags.ReadMention(TorrentTags.Requester("1234567890")));
+    }
 
     [Fact]
     public void A_progress_message_survives_the_round_trip()
@@ -62,7 +82,7 @@ public class TorrentTagsTests
         // The same shape as both. Read as a channel it would announce a film into a voice
         // channel; read as a requester it would ping a channel as though it were a person.
         Assert.Null(TorrentTags.ReadNotifyChannel(TorrentTags.Room(1234567890UL)));
-        Assert.Null(TorrentTags.ReadRequester(TorrentTags.Room(1234567890UL)));
+        Assert.Null(TorrentTags.ReadMention(TorrentTags.Room(1234567890UL)));
         Assert.Null(TorrentTags.ReadRoom(TorrentTags.Notify(1234567890UL)));
     }
 
@@ -88,6 +108,7 @@ public class TorrentTagsTests
     {
         Assert.Null(TorrentTags.ReadNotifyChannel(tag));
         Assert.Null(TorrentTags.ReadRequester(tag));
+        Assert.Null(TorrentTags.ReadMention(tag));
         Assert.Null(TorrentTags.ReadProgress(tag));
         Assert.Null(TorrentTags.ReadRoom(tag));
         Assert.Null(TorrentTags.ReadLibrary(tag));

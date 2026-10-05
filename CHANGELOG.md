@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.32.0
+
+A requester tag names the account an identity provider knows the person by, a string:
+`TorrentTags.Requester(string)` writes it with a comma and the percent sign percent-encoded, and
+`ReadRequester` answers the string. `TorrentTags.Mention` is the Discord user the bot mentions when it
+announces a film in a channel, written by the bot and read by it alone. `TorrentTags.TellDirect` is
+gone: nobody is sent a Discord message for a download.
+
 ## 0.31.0
 
 `DiskBudget` is the one account of what is promised on a volume. A running transcode holds a claim in

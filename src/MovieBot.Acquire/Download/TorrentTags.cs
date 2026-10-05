@@ -37,18 +37,36 @@ public static partial class TorrentTags
             : null;
 
     /// <summary>
-    /// Who asked for the film, so they can be told when it arrives. The account id follows the
-    /// colon.
+    /// Who asked for the film, so they can be told when it arrives. The account follows the colon:
+    /// the <c>sub</c> the identity provider names the person by, a string of any shape. A comma
+    /// separates tags in the torrent client, so a comma and the percent sign that escapes it are
+    /// percent-encoded, and nothing else is.
     /// </summary>
     public const string RequesterPrefix = "requester:";
 
-    public static string Requester(ulong accountId) => $"{RequesterPrefix}{accountId}";
+    public static string Requester(string accountId) =>
+        RequesterPrefix + accountId.Replace("%", "%25", StringComparison.Ordinal).Replace(",", "%2C", StringComparison.Ordinal);
 
     /// <summary>Reads the account out of a requester tag, or null when it is not one.</summary>
-    public static ulong? ReadRequester(string tag) =>
-        tag.StartsWith(RequesterPrefix, StringComparison.Ordinal)
-        && ulong.TryParse(tag[RequesterPrefix.Length..], out var accountId)
-            ? accountId
+    public static string? ReadRequester(string tag) =>
+        tag.StartsWith(RequesterPrefix, StringComparison.Ordinal) && tag.Length > RequesterPrefix.Length
+            ? tag[RequesterPrefix.Length..].Replace("%2C", ",", StringComparison.Ordinal).Replace("%25", "%", StringComparison.Ordinal)
+            : null;
+
+    /// <summary>
+    /// The Discord user the bot mentions when it announces the film in a channel. Written by the bot,
+    /// which asked for the film on that person's behalf and is the one surface that knows them by a
+    /// Discord id; nothing else reads it.
+    /// </summary>
+    public const string MentionPrefix = "mention:";
+
+    public static string Mention(ulong discordUserId) => $"{MentionPrefix}{discordUserId}";
+
+    /// <summary>Reads the Discord user out of a mention tag, or null when it is not one.</summary>
+    public static ulong? ReadMention(string tag) =>
+        tag.StartsWith(MentionPrefix, StringComparison.Ordinal)
+        && ulong.TryParse(tag[MentionPrefix.Length..], out var userId)
+            ? userId
             : null;
 
     /// <summary>
@@ -57,12 +75,6 @@ public static partial class TorrentTags
     /// told, so a download that never carried it is one nobody is owed news of.
     /// </summary>
     public const string Tell = "tell";
-
-    /// <summary>
-    /// The person who asked is told directly, by a Discord message where no push reaches them,
-    /// because no channel was named to announce the film in. Carried beside <see cref="Tell"/>.
-    /// </summary>
-    public const string TellDirect = "tell:direct";
 
     /// <summary>
     /// The message showing this download's progress, as a channel and a message within it.
