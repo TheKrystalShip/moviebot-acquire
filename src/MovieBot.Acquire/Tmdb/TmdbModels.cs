@@ -96,6 +96,12 @@ public sealed record TmdbContentRating
 public sealed record TmdbFound
 {
     [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("overview")] public string? Overview { get; init; }
+    [JsonPropertyName("vote_average")] public double? VoteAverage { get; init; }
+    [JsonPropertyName("vote_count")] public int? VoteCount { get; init; }
+    [JsonPropertyName("release_date")] public string? ReleaseDate { get; init; }
+    [JsonPropertyName("first_air_date")] public string? FirstAirDate { get; init; }
+    [JsonPropertyName("poster_path")] public string? PosterPath { get; init; }
 }
 
 public sealed record TmdbTrendingPage

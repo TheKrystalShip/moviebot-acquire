@@ -56,6 +56,37 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
     }
 
     /// <summary>
+    /// The film or show an IMDb id names, at a glance, in one call; a film where the id names both.
+    /// Null when the database has neither under it. Throws <see cref="HttpRequestException"/> when the
+    /// database cannot be reached, as for a film.
+    /// </summary>
+    public async Task<TitleGlance?> GlanceAsync(string imdbId, CancellationToken ct)
+    {
+        if (ImdbId.ToTag(ImdbId.ToNumber(imdbId)) is not { } tag) return null;
+        var settings = options.Value;
+        if (!settings.IsConfigured) return null;
+
+        var found = await GetAsync($"find/{tag}?external_source=imdb_id&language={Uri.EscapeDataString(settings.Language)}",
+            TmdbJsonContext.Default.TmdbFindResponse, ct);
+        var (hit, kind) = found?.MovieResults is { Count: > 0 } films ? (films[0], "film")
+            : found?.TvResults is { Count: > 0 } shows ? (shows[0], "show")
+            : (null, "");
+        if (hit is null) return null;
+
+        return new TitleGlance
+        {
+            TmdbId = hit.Id,
+            Kind = kind,
+            Rating = hit.VoteCount is > 0 && hit.VoteAverage is > 0 ? Math.Round(hit.VoteAverage.Value, 1) : null,
+            Votes = hit.VoteCount ?? 0,
+            Overview = string.IsNullOrWhiteSpace(hit.Overview) ? null : hit.Overview.Trim(),
+            Released = DateOnly.TryParseExact(hit.ReleaseDate ?? hit.FirstAirDate, "yyyy-MM-dd",
+                System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var day) ? day : null,
+            PosterPath = string.IsNullOrEmpty(hit.PosterPath) ? null : hit.PosterPath,
+        };
+    }
+
+    /// <summary>
     /// The show an IMDb id names, or null when the database has no show under it. Throws
     /// <see cref="HttpRequestException"/> when the database cannot be reached, as for a film.
     /// </summary>
@@ -324,7 +355,11 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
     private async Task<T?> GetAsync<T>(string path, JsonTypeInfo<T> type, CancellationToken ct)
     {
         var settings = options.Value;
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"{settings.BaseUrl.TrimEnd('/')}/{path}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{settings.BaseUrl.TrimEnd('/')}/{path}")
+        {
+            Version = http.DefaultRequestVersion,
+            VersionPolicy = http.DefaultVersionPolicy,
+        };
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ReadAccessToken);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 

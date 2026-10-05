@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.33.0
+
+`TmdbClient.GlanceAsync` answers a film or show by its IMDb id at a glance, in one call: the database's
+id and kind, rating, votes, overview, release date and poster path (`TitleGlance`).
+`KeptConnections.KeepConnectionsOpen` gives an HTTP client one handler for the life of the process and
+HTTP/2 where the server speaks it, pinging every thirty seconds so an idle connection stays open for
+half an hour; `ImdbClient` is registered with it, and `TmdbClient` sends its
+requests at the client's version so it reaches HTTP/2 too.
+
 ## 0.32.0
 
 A requester tag names the account an identity provider knows the person by, a string:

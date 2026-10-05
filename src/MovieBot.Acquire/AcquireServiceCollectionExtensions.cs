@@ -96,7 +96,7 @@ public static class AcquireServiceCollectionExtensions
         {
             http.Timeout = TimeSpan.FromSeconds(10);
             http.DefaultRequestHeaders.UserAgent.ParseAdd("MovieBot/0.1 (+acquire)");
-        });
+        }).KeepConnectionsOpen();
 
         services.AddSingleton<ReleaseSearch>();
         services.AddSingleton<IReleaseSearch>(sp => sp.GetRequiredService<ReleaseSearch>());

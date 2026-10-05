@@ -185,6 +185,12 @@ only thing that talks to it.
   offered, since a show is fetched by its seasons. A film search identifies its film among features
   only, so a series sharing the name does not send it to the series' id.
 
+- **A client asked while somebody waits keeps its connections open** (`KeptConnections`): one
+  handler for the life of the process, HTTP/2 where the server speaks it, and a ping every thirty
+  seconds. A request on an open connection is answered in about 15 ms and one that opens it pays
+  about 100 ms more; both servers close an idle connection within four minutes, and the ping is what
+  keeps it, a search box otherwise paying the 100 ms on nearly every query.
+
 ## Film database invariants
 
 `TmdbClient` describes a film or a show from The Movie Database: credits, certificate, genres,
@@ -196,6 +202,9 @@ season's episodes with their stills. It is the only thing that talks to it.
   the show's database id, which the show's description carries. The week's trending films and shows
   (`TrendingFilmsAsync`, `TrendingShowsAsync`) come back named by the database's own id, so each
   entry's IMDb id is asked for in turn; an entry without one, or an adult one, is left out.
+- **A title at a glance is one call.** `GlanceAsync` answers the rating, the overview and the release
+  date the database's lookup by IMDb id already carries, for a search result; the full description
+  is a second call, made when the title is opened.
 - **The token is a credential and lives in the environment** (`Tmdb__ReadAccessToken`). Without one
   nothing is asked and a film is described by the index alone.
 - **Nothing reaches the database but the API, and it asks once.** The client hands out image paths,
