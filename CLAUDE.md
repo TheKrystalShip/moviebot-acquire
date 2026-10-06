@@ -202,6 +202,12 @@ season's episodes with their stills. It is the only thing that talks to it.
   the show's database id, which the show's description carries. The week's trending films and shows
   (`TrendingFilmsAsync`, `TrendingShowsAsync`) come back named by the database's own id, so each
   entry's IMDb id is asked for in turn; an entry without one, or an adult one, is left out.
+- **Browsing by a person or a genre names every title by its IMDb id too.** `PersonAsync` and
+  `GenreAsync` come back with the database's own ids, so each title's IMDb id is asked for, several
+  at once, and a title without one is left out. A person's credits are their work: the parts they
+  played and the jobs that make a title theirs, never an appearance as themselves or on a talk, news
+  or reality show, best known first by votes. A genre's list is its most popular titles with at least
+  `GenreVotesAtLeast` votes. Films and shows have separate genre lists (`GenresAsync`).
 - **A title at a glance is one call.** `GlanceAsync` answers the rating, the overview and the release
   date the database's lookup by IMDb id already carries, for a search result; the full description
   is a second call, made when the title is opened.

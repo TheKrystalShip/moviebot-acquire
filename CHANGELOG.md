@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.34.0
+
+`TmdbClient.PersonAsync` answers a person by the database's id for them, with the films and shows they
+are credited on (`PersonCredits`, each a `CatalogueTitle` with the part played or the job done), most
+voted on first: an appearance as themselves and any on a talk, news or reality show are left out, and a
+title acted in and directed is one entry with both. `GenresAsync` lists the database's genres for films
+or for shows, and `GenreAsync` a genre's most popular titles with at least `GenreVotesAtLeast` votes,
+leaving talk, news and reality out of a genre of shows. Each title is named by its IMDb id, asked for
+eight at a time. A description's `CastMember` carries the person's `TmdbId`, and `FilmDetails` and
+`ShowDetails` carry `PersonIds`, each director's, writer's and creator's id by name.
+`TmdbTrendingPage` and `TmdbTrendingItem` are `TmdbTitlePage` and `TmdbListedTitle`, which the
+genre lists and a person's credits are read as too.
+
 ## 0.33.0
 
 `TmdbClient.GlanceAsync` answers a film or show by its IMDb id at a glance, in one call: the database's

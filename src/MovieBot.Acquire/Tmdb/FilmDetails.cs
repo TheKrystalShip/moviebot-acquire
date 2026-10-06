@@ -42,6 +42,9 @@ public sealed record FilmDetails
 
     public IReadOnlyList<string> Writers { get; init; } = [];
 
+    /// <summary>Each director's and writer's id in the database, by the name they are listed under.</summary>
+    public IReadOnlyDictionary<string, int> PersonIds { get; init; } = new Dictionary<string, int>();
+
     /// <summary>Top-billed first, as the credits order them.</summary>
     public IReadOnlyList<CastMember> Cast { get; init; } = [];
 
@@ -67,6 +70,9 @@ public sealed record FilmDetails
 
 public sealed record CastMember
 {
+    /// <summary>The person's id in the database, which their credits are asked for by; null in a description kept without one.</summary>
+    public int? TmdbId { get; init; }
+
     public required string Name { get; init; }
 
     /// <summary>Who they play, as the credits spell it.</summary>

@@ -44,6 +44,9 @@ public sealed record ShowDetails
 
     public IReadOnlyList<string> Creators { get; init; } = [];
 
+    /// <summary>Each creator's id in the database, by the name they are listed under.</summary>
+    public IReadOnlyDictionary<string, int> PersonIds { get; init; } = new Dictionary<string, int>();
+
     /// <summary>The cast across every season, billed in the database's order, with their main role.</summary>
     public IReadOnlyList<CastMember> Cast { get; init; } = [];
 

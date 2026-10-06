@@ -70,6 +70,7 @@ public sealed record TmdbAggregateCredits
 
 public sealed record TmdbAggregateCast
 {
+    [JsonPropertyName("id")] public int Id { get; init; }
     [JsonPropertyName("name")] public string? Name { get; init; }
     [JsonPropertyName("order")] public int? Order { get; init; }
     [JsonPropertyName("profile_path")] public string? ProfilePath { get; init; }
@@ -104,23 +105,54 @@ public sealed record TmdbFound
     [JsonPropertyName("poster_path")] public string? PosterPath { get; init; }
 }
 
-public sealed record TmdbTrendingPage
+/// <summary>One page of a list of titles: the week's trending, or a genre's catalogue.</summary>
+public sealed record TmdbTitlePage
 {
-    [JsonPropertyName("results")] public IReadOnlyList<TmdbTrendingItem>? Results { get; init; }
+    [JsonPropertyName("results")] public IReadOnlyList<TmdbListedTitle>? Results { get; init; }
 }
 
-/// <summary>A film carries <c>title</c> and <c>release_date</c>, a show <c>name</c> and <c>first_air_date</c>.</summary>
-public sealed record TmdbTrendingItem
+/// <summary>
+/// A title as a list or a person's credits names it. A film carries <c>title</c> and
+/// <c>release_date</c>, a show <c>name</c> and <c>first_air_date</c>; a credit also carries
+/// <c>media_type</c> and the part played (<c>character</c>) or the job done (<c>job</c>).
+/// </summary>
+public sealed record TmdbListedTitle
 {
     [JsonPropertyName("id")] public int Id { get; init; }
     [JsonPropertyName("title")] public string? Title { get; init; }
     [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("overview")] public string? Overview { get; init; }
     [JsonPropertyName("release_date")] public string? ReleaseDate { get; init; }
     [JsonPropertyName("first_air_date")] public string? FirstAirDate { get; init; }
     [JsonPropertyName("vote_average")] public double? VoteAverage { get; init; }
     [JsonPropertyName("vote_count")] public int? VoteCount { get; init; }
+    [JsonPropertyName("popularity")] public double? Popularity { get; init; }
     [JsonPropertyName("poster_path")] public string? PosterPath { get; init; }
     [JsonPropertyName("adult")] public bool? Adult { get; init; }
+    [JsonPropertyName("genre_ids")] public IReadOnlyList<int>? GenreIds { get; init; }
+    [JsonPropertyName("media_type")] public string? MediaType { get; init; }
+    [JsonPropertyName("character")] public string? Character { get; init; }
+    [JsonPropertyName("job")] public string? Job { get; init; }
+}
+
+public sealed record TmdbPerson
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("known_for_department")] public string? KnownForDepartment { get; init; }
+    [JsonPropertyName("profile_path")] public string? ProfilePath { get; init; }
+    [JsonPropertyName("combined_credits")] public TmdbCombinedCredits? CombinedCredits { get; init; }
+}
+
+public sealed record TmdbCombinedCredits
+{
+    [JsonPropertyName("cast")] public IReadOnlyList<TmdbListedTitle>? Cast { get; init; }
+    [JsonPropertyName("crew")] public IReadOnlyList<TmdbListedTitle>? Crew { get; init; }
+}
+
+public sealed record TmdbGenreList
+{
+    [JsonPropertyName("genres")] public IReadOnlyList<TmdbNamed>? Genres { get; init; }
 }
 
 public sealed record TmdbExternalIds
@@ -150,8 +182,10 @@ public sealed record TmdbMovie
     [JsonPropertyName("release_dates")] public TmdbReleaseDates? ReleaseDates { get; init; }
 }
 
+/// <summary>A genre, a network or a person by name; <c>id</c> is the database's where it gives one.</summary>
 public sealed record TmdbNamed
 {
+    [JsonPropertyName("id")] public int Id { get; init; }
     [JsonPropertyName("name")] public string? Name { get; init; }
 }
 
@@ -169,6 +203,7 @@ public sealed record TmdbCredits
 
 public sealed record TmdbCast
 {
+    [JsonPropertyName("id")] public int Id { get; init; }
     [JsonPropertyName("name")] public string? Name { get; init; }
     [JsonPropertyName("character")] public string? Character { get; init; }
     [JsonPropertyName("order")] public int? Order { get; init; }
@@ -177,6 +212,7 @@ public sealed record TmdbCast
 
 public sealed record TmdbCrew
 {
+    [JsonPropertyName("id")] public int Id { get; init; }
     [JsonPropertyName("name")] public string? Name { get; init; }
     [JsonPropertyName("job")] public string? Job { get; init; }
     [JsonPropertyName("department")] public string? Department { get; init; }
@@ -205,6 +241,8 @@ public sealed record TmdbRelease
 [JsonSerializable(typeof(TmdbMovie))]
 [JsonSerializable(typeof(TmdbTv))]
 [JsonSerializable(typeof(TmdbTvSeason))]
-[JsonSerializable(typeof(TmdbTrendingPage))]
+[JsonSerializable(typeof(TmdbTitlePage))]
 [JsonSerializable(typeof(TmdbExternalIds))]
+[JsonSerializable(typeof(TmdbPerson))]
+[JsonSerializable(typeof(TmdbGenreList))]
 public partial class TmdbJsonContext : JsonSerializerContext;

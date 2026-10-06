@@ -145,7 +145,7 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
         if (!settings.IsConfigured) return [];
 
         var language = Uri.EscapeDataString(settings.Language);
-        var page = await GetAsync($"trending/{kind}/week?language={language}", TmdbJsonContext.Default.TmdbTrendingPage, ct);
+        var page = await GetAsync($"trending/{kind}/week?language={language}", TmdbJsonContext.Default.TmdbTitlePage, ct);
 
         var titles = new List<TrendingTitle>();
         foreach (var item in page?.Results ?? [])
@@ -170,6 +170,175 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
         }
         return titles;
     }
+
+    /// <summary>
+    /// A person and the films and shows they are credited on, best known first, at most
+    /// <paramref name="count"/>; null when the database has nobody under the id. A credit is a part
+    /// they played or a job that made the title theirs (<see cref="CreditedJobs"/>), and one title
+    /// credited both ways is listed once with both. Their appearances as themselves and on talk, news
+    /// and reality shows are left out, being promotion rather than work. Throws
+    /// <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<PersonCredits?> PersonAsync(int personId, int count, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || personId <= 0) return null;
+
+        var person = await GetAsync(
+            $"person/{personId}?append_to_response=combined_credits&language={Uri.EscapeDataString(settings.Language)}",
+            TmdbJsonContext.Default.TmdbPerson, ct);
+        if (person is null || string.IsNullOrWhiteSpace(person.Name)) return null;
+
+        var credited = new Dictionary<(string Kind, int Id), (TmdbListedTitle Title, List<string> Roles)>();
+        void Credit(TmdbListedTitle title, string? role)
+        {
+            if (KindOf(title.MediaType) is not { } kind || title.Adult == true) return;
+            if (!credited.TryGetValue((kind, title.Id), out var entry))
+                credited[(kind, title.Id)] = entry = (title, []);
+            if (!string.IsNullOrWhiteSpace(role) && !entry.Roles.Contains(role.Trim(), StringComparer.OrdinalIgnoreCase))
+                entry.Roles.Add(role.Trim());
+        }
+
+        foreach (var part in person.CombinedCredits?.Cast ?? [])
+            if (!IsAppearance(part)) Credit(part, part.Character);
+        foreach (var job in person.CombinedCredits?.Crew ?? [])
+            if (job.Job is { } name && CreditedJobs.Contains(name)) Credit(job, name);
+
+        // A title nobody has voted on and with no date is an announcement, not yet anything to watch.
+        var best = credited
+            .Where(c => c.Value.Title.VoteCount is > 0 || Day(c.Value.Title.ReleaseDate ?? c.Value.Title.FirstAirDate) is not null)
+            .OrderByDescending(c => c.Value.Title.VoteCount ?? 0)
+            .ThenByDescending(c => c.Value.Title.Popularity ?? 0)
+            .Take(Math.Max(0, count))
+            .Select(c => (c.Value.Title, c.Key.Kind, Role: c.Value.Roles.Count > 0 ? string.Join(" · ", c.Value.Roles) : null))
+            .ToList();
+
+        return new PersonCredits
+        {
+            TmdbId = person.Id,
+            Name = person.Name.Trim(),
+            KnownFor = string.IsNullOrWhiteSpace(person.KnownForDepartment) ? null : person.KnownForDepartment.Trim(),
+            ProfilePath = string.IsNullOrEmpty(person.ProfilePath) ? null : person.ProfilePath,
+            Titles = await NamedAsync(best, ct),
+        };
+    }
+
+    /// <summary>
+    /// The database's genres for films (<c>film</c>) or for shows (<c>show</c>); empty for any other
+    /// kind. Throws <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<IReadOnlyList<CatalogueGenre>> GenresAsync(string kind, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || Space(kind) is not { } space) return [];
+
+        var list = await GetAsync($"genre/{space}/list?language={Uri.EscapeDataString(settings.Language)}",
+            TmdbJsonContext.Default.TmdbGenreList, ct);
+        return (list?.Genres ?? [])
+            .Where(g => g.Id > 0 && !string.IsNullOrWhiteSpace(g.Name))
+            .Select(g => new CatalogueGenre { Id = g.Id, Name = g.Name!.Trim() })
+            .ToList();
+    }
+
+    /// <summary>
+    /// The films or shows in one of the database's genres, the most popular first, at most
+    /// <paramref name="count"/>. Only a title with <see cref="GenreVotesAtLeast"/> votes is listed,
+    /// which is what keeps a genre's list to things people have seen, and a list of shows leaves out
+    /// talk, news and reality. Throws <see cref="HttpRequestException"/> when the database cannot be
+    /// reached.
+    /// </summary>
+    public async Task<IReadOnlyList<CatalogueTitle>> GenreAsync(string kind, int genreId, int count, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || Space(kind) is not { } space || genreId <= 0 || count <= 0) return [];
+
+        var language = Uri.EscapeDataString(settings.Language);
+        var without = kind == "show" ? "&without_genres=" + string.Join("%7C", UnscriptedShowGenres) : "";
+        var listed = new List<(TmdbListedTitle Title, string Kind, string? Role)>();
+        for (var page = 1; listed.Count < count && page <= (count + PageSize - 1) / PageSize; page++)
+        {
+            var answer = await GetAsync(
+                $"discover/{space}?include_adult=false&language={language}&page={page}&sort_by=popularity.desc"
+                + $"&vote_count.gte={GenreVotesAtLeast}&with_genres={genreId}{without}",
+                TmdbJsonContext.Default.TmdbTitlePage, ct);
+            var results = answer?.Results ?? [];
+            listed.AddRange(results
+                .Where(t => t.Adult != true && !string.IsNullOrWhiteSpace(t.Title ?? t.Name))
+                .Select(t => (t, kind, (string?)null)));
+            if (results.Count < PageSize) break;
+        }
+        return await NamedAsync(listed.Take(count).ToList(), ct);
+    }
+
+    /// <summary>The fewest votes a title in a genre's list has.</summary>
+    public const int GenreVotesAtLeast = 100;
+
+    /// <summary>How many titles one page of a list holds.</summary>
+    private const int PageSize = 20;
+
+    /// <summary>How many titles' IMDb ids are asked for at once.</summary>
+    private const int LookupsAtOnce = 8;
+
+    /// <summary>The jobs besides acting that make a title part of a person's work.</summary>
+    private static readonly HashSet<string> CreditedJobs = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Director", "Creator", "Writer", "Screenplay", "Story", "Novel",
+    };
+
+    /// <summary>The database's genres for talk, news and reality shows.</summary>
+    private static readonly int[] UnscriptedShowGenres = [10767, 10763, 10764];
+
+    /// <summary>A part played as oneself, or any part on a talk, news or reality show.</summary>
+    private static bool IsAppearance(TmdbListedTitle part)
+    {
+        if (part.MediaType == "tv" && part.GenreIds is { } genres && genres.Any(UnscriptedShowGenres.Contains)) return true;
+        var character = part.Character?.Trim() ?? "";
+        return SelfWords.Any(word => character.StartsWith(word, StringComparison.OrdinalIgnoreCase)
+                                     && (character.Length == word.Length || !char.IsLetter(character[word.Length])));
+    }
+
+    private static readonly string[] SelfWords = ["Self", "Himself", "Herself", "Themselves", "Themself"];
+
+    /// <summary>
+    /// Each listed title with its IMDb id, asked for side by side and kept in the order given; a title
+    /// without one is one nothing here could lead to, and is left out.
+    /// </summary>
+    private async Task<List<CatalogueTitle>> NamedAsync(IReadOnlyList<(TmdbListedTitle Title, string Kind, string? Role)> listed, CancellationToken ct)
+    {
+        var named = new CatalogueTitle?[listed.Count];
+        await Parallel.ForEachAsync(Enumerable.Range(0, listed.Count),
+            new ParallelOptions { MaxDegreeOfParallelism = LookupsAtOnce, CancellationToken = ct },
+            async (i, token) =>
+            {
+                var (title, kind, role) = listed[i];
+                var ids = await GetAsync($"{Space(kind)}/{title.Id}/external_ids", TmdbJsonContext.Default.TmdbExternalIds, token);
+                if (ImdbId.ToTag(ImdbId.ToNumber(ids?.ImdbId)) is not { } tag) return;
+                named[i] = new CatalogueTitle
+                {
+                    TmdbId = title.Id,
+                    ImdbId = tag,
+                    Kind = kind,
+                    Title = (title.Title ?? title.Name ?? tag).Trim(),
+                    Released = Day(title.ReleaseDate ?? title.FirstAirDate),
+                    Rating = title.VoteCount is > 0 && title.VoteAverage is > 0 ? Math.Round(title.VoteAverage.Value, 1) : null,
+                    Votes = title.VoteCount ?? 0,
+                    Overview = string.IsNullOrWhiteSpace(title.Overview) ? null : title.Overview.Trim(),
+                    PosterPath = string.IsNullOrEmpty(title.PosterPath) ? null : title.PosterPath,
+                    Role = role,
+                };
+            });
+        return named.OfType<CatalogueTitle>().ToList();
+    }
+
+    /// <summary>The database's path segment for a kind: <c>movie</c> for a film, <c>tv</c> for a show.</summary>
+    private static string? Space(string kind) => kind switch { "film" => "movie", "show" => "tv", _ => null };
+
+    /// <summary>The kind a credit's <c>media_type</c> names.</summary>
+    private static string? KindOf(string? mediaType) => mediaType switch { "movie" => "film", "tv" => "show", _ => null };
+
+    private static DateOnly? Day(string? date) =>
+        DateOnly.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var day) ? day : null;
 
     /// <summary>The show's description, from what the database answered.</summary>
     public static ShowDetails ReadShow(TmdbTv tv, string imdbId, TmdbOptions settings)
@@ -197,6 +366,7 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
             Rating = tv.VoteCount is > 0 && tv.VoteAverage is > 0 ? Math.Round(tv.VoteAverage.Value, 1) : null,
             Votes = tv.VoteCount ?? 0,
             Creators = Names(tv.CreatedBy?.Select(c => c.Name)),
+            PersonIds = PersonIds(tv.CreatedBy?.Select(c => (c.Id, c.Name))),
             // A show's billing across its seasons: a role is the one the actor played most.
             Cast = (tv.AggregateCredits?.Cast ?? [])
                 .Where(c => !string.IsNullOrWhiteSpace(c.Name))
@@ -204,6 +374,7 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
                 .Take(CastShown)
                 .Select(c => new CastMember
                 {
+                    TmdbId = c.Id > 0 ? c.Id : null,
                     Name = c.Name!.Trim(),
                     Character = c.Roles?
                         .Where(r => !string.IsNullOrWhiteSpace(r.Character))
@@ -289,6 +460,9 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
     public static FilmDetails Read(TmdbMovie movie, string imdbId, TmdbOptions settings)
     {
         var crew = movie.Credits?.Crew ?? [];
+        var directors = crew.Where(c => string.Equals(c.Job, "Director", StringComparison.OrdinalIgnoreCase)).ToList();
+        var writers = crew.Where(c => string.Equals(c.Department, "Writing", StringComparison.OrdinalIgnoreCase)
+                                      && c.Job is { } job && WritingJobs.Contains(job)).ToList();
         static string? Image(string? path) => string.IsNullOrEmpty(path) ? null : path;
 
         return new FilmDetails
@@ -307,15 +481,16 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
             // A rating with no votes behind it is the database's placeholder, not anybody's opinion.
             Rating = movie.VoteCount is > 0 && movie.VoteAverage is > 0 ? Math.Round(movie.VoteAverage.Value, 1) : null,
             Votes = movie.VoteCount ?? 0,
-            Directors = Names(crew.Where(c => string.Equals(c.Job, "Director", StringComparison.OrdinalIgnoreCase)).Select(c => c.Name)),
-            Writers = Names(crew.Where(c => string.Equals(c.Department, "Writing", StringComparison.OrdinalIgnoreCase)
-                                            && c.Job is { } job && WritingJobs.Contains(job)).Select(c => c.Name)),
+            Directors = Names(directors.Select(c => c.Name)),
+            Writers = Names(writers.Select(c => c.Name)),
+            PersonIds = PersonIds(directors.Concat(writers).Select(c => (c.Id, c.Name))),
             Cast = (movie.Credits?.Cast ?? [])
                 .Where(c => !string.IsNullOrWhiteSpace(c.Name))
                 .OrderBy(c => c.Order ?? int.MaxValue)
                 .Take(CastShown)
                 .Select(c => new CastMember
                 {
+                    TmdbId = c.Id > 0 ? c.Id : null,
                     Name = c.Name!.Trim(),
                     Character = string.IsNullOrWhiteSpace(c.Character) ? null : c.Character.Trim(),
                     ProfilePath = Image(c.ProfilePath),
@@ -342,6 +517,15 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
             .ToList();
         if (releases is not { Count: > 0 }) return null;
         return (releases.FirstOrDefault(r => r.Type == 3) ?? releases[0]).Certification!.Trim();
+    }
+
+    /// <summary>Each named person's id, by their trimmed name; the first id a name is listed with.</summary>
+    private static Dictionary<string, int> PersonIds(IEnumerable<(int Id, string? Name)>? people)
+    {
+        var ids = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var (id, name) in people ?? [])
+            if (id > 0 && !string.IsNullOrWhiteSpace(name)) ids.TryAdd(name.Trim(), id);
+        return ids;
     }
 
     /// <summary>Distinct, trimmed, in the order given.</summary>
