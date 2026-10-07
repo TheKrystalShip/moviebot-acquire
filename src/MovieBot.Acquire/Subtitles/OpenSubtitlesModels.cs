@@ -78,6 +78,12 @@ public sealed record OpenSubtitlesFeature
     [JsonPropertyName("imdb_id")] public long? ImdbId { get; init; }
 
     [JsonPropertyName("tmdb_id")] public long? TmdbId { get; init; }
+
+    /// <summary>For an episode, its show's IMDb id, as a bare number.</summary>
+    [JsonPropertyName("parent_imdb_id")] public long? ParentImdbId { get; init; }
+
+    [JsonPropertyName("season_number")] public int? SeasonNumber { get; init; }
+    [JsonPropertyName("episode_number")] public int? EpisodeNumber { get; init; }
 }
 
 /// <summary>

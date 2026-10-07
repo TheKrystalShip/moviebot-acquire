@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -74,6 +75,29 @@ public sealed class OpenSubtitlesClient(
             ["imdb_id"] = number.ToString(),
             ["languages"] = language
         }, _options.MaximumPages, ct);
+    }
+
+    /// <summary>
+    /// Every subtitle for one episode of a show, by the show's IMDb id and the episode's place in it.
+    /// A show's own id names every episode and special it has, so the episode is asked for by its
+    /// place, and anything the index answers for another episode is left out.
+    /// </summary>
+    public async Task<IReadOnlyList<OpenSubtitlesItem>> SearchByEpisodeAsync(
+        string showImdbId, int season, int episode, string language, CancellationToken ct)
+    {
+        var number = ImdbId.ToNumber(showImdbId)
+            ?? throw new OpenSubtitlesException($"'{showImdbId}' is not an IMDb id.");
+
+        var items = await SearchAsync(new SortedDictionary<string, string>
+        {
+            ["episode_number"] = episode.ToString(CultureInfo.InvariantCulture),
+            ["languages"] = language,
+            ["parent_imdb_id"] = number.ToString(CultureInfo.InvariantCulture),
+            ["season_number"] = season.ToString(CultureInfo.InvariantCulture)
+        }, _options.MaximumPages, ct);
+
+        return [.. items.Where(i => i.Attributes?.Feature is not { } f
+            || (f.SeasonNumber == season && f.EpisodeNumber == episode))];
     }
 
     /// <summary>

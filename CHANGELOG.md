@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.35.0
+
+`OpenSubtitlesClient.SearchByEpisodeAsync` finds one episode's subtitles by its show's IMDb id and its
+season and episode (`parent_imdb_id`, `season_number`, `episode_number`), and leaves out anything the
+index answers for another episode. A show's own id names every episode and special it has, so a search
+by it alone offered subtitles from anywhere in the show. `OpenSubtitlesFeature` carries
+`ParentImdbId`, `SeasonNumber` and `EpisodeNumber`.
+
 ## 0.34.0
 
 `TmdbClient.PersonAsync` answers a person by the database's id for them, with the films and shows they
