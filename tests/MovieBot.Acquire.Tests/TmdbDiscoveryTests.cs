@@ -153,17 +153,17 @@ public class TmdbDiscoveryTests
         Assert.Equal("Hollow Hill", Assert.Single(found).Title);
         Assert.Equal(
             "/3/discover/movie?include_adult=false&language=en-US&primary_release_date.gte=2000-01-01&primary_release_date.lte=2005-12-31"
-            + "&sort_by=vote_average.desc&vote_average.gte=6.5&vote_count.gte=200&with_genres=27,53&with_keywords=12999"
+            + "&sort_by=vote_count.desc&vote_average.gte=6.5&vote_count.gte=200&with_genres=27,53&with_keywords=12999"
             + "&with_original_language=ko&with_people=8001,9&page=1",
             asked);
     }
 
     [Theory]
     [InlineData(DiscoverSorts.Popular, "popularity.desc")]
-    [InlineData(DiscoverSorts.Rating, "vote_average.desc")]
+    [InlineData(DiscoverSorts.Rating, "vote_count.desc")]
     [InlineData(DiscoverSorts.Newest, "primary_release_date.desc")]
     [InlineData(DiscoverSorts.Oldest, "primary_release_date.asc")]
-    public async Task Each_sort_is_the_databases_own(string sort, string sortBy)
+    public async Task Each_sort_asks_the_database_for_its_own_order_or_for_the_pool_a_rating_is_weighed_in(string sort, string sortBy)
     {
         string? asked = null;
         await Client(request =>
@@ -174,6 +174,45 @@ public class TmdbDiscoveryTests
 
         Assert.Contains($"sort_by={sortBy}", asked);
     }
+
+    [Fact]
+    public async Task A_discovery_leaves_out_the_genres_it_is_told_to_and_a_shows_unscripted_ones_besides()
+    {
+        var asked = new List<string>();
+        var client = Client(request =>
+        {
+            asked.Add(Decoded(request));
+            return Json("""{ "results": [] }""");
+        });
+
+        await client.DiscoverAsync(new DiscoverQuery { Kind = "film", GenreIds = [27], WithoutGenreIds = [16, 10751] }, 20, CancellationToken.None);
+        await client.DiscoverAsync(new DiscoverQuery { Kind = "show", WithoutGenreIds = [16] }, 20, CancellationToken.None);
+
+        Assert.Contains("without_genres=16|10751&", asked[0] + "&");
+        Assert.Contains("without_genres=16|10767|10763|10764", asked[1]);
+    }
+
+    [Fact]
+    public async Task A_sort_by_rating_reads_the_most_voted_titles_and_orders_them_by_the_votes_behind_each_rating()
+    {
+        var pages = new List<string>();
+        var client = Client(request =>
+        {
+            pages.Add(Decoded(request));
+            var first = request.RequestUri!.Query.Contains("page=1");
+            return Json(first
+                ? string.Join("", """{ "results": [ """, Title(1, "Niche", 8.4, 268), ",", Title(2, "Famous", 7.6, 19000), ",", Title(3, "Known", 7.8, 9000), ",", Title(4, "Seen", 7.0, 5000), ",", Title(5, "Middling", 6.9, 6000), """ ] }""")
+                : """{ "results": [] }""");
+        });
+
+        var found = await client.DiscoverAsync(new DiscoverQuery { Kind = "film", Sort = DiscoverSorts.Rating }, 2, CancellationToken.None);
+
+        Assert.Equal(["Known", "Famous"], found.Select(t => t.Title));
+        Assert.Single(pages);
+    }
+
+    private static string Title(int id, string name, double average, int votes) =>
+        $$"""{ "id": {{id}}, "title": "{{name}}", "release_date": "2010-01-01", "vote_average": {{average}}, "vote_count": {{votes}} }""";
 
     [Fact]
     public async Task A_discovery_of_shows_dates_by_first_air_leaves_out_unscripted_shows_and_cannot_filter_by_people()

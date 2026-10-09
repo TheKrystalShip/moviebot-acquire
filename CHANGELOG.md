@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.37.0
+
+A discovery sorted by rating reads the five pages of the most voted matches and orders them with
+`WeightedRating`, a rating weighted by votes: each average counts in proportion to its votes and the rest
+of the weight goes to the vote-weighted mean of the set, with the votes of the set's lower quartile as
+the prior. The database's own order by average puts a title a few hundred people rated above the ones
+everybody has seen. `DiscoverQuery.WithoutGenreIds` leaves out the titles filed under any of the genres.
+
 ## 0.36.0
 
 `TmdbClient` finds as well as describes. `SearchTitlesAsync` searches films and shows by name,

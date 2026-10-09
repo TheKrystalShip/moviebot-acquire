@@ -149,6 +149,9 @@ public sealed record DiscoverQuery
     /// <summary>The last day of the release window.</summary>
     public DateOnly? To { get; init; }
 
+    /// <summary>The genres a title is filed under none of.</summary>
+    public IReadOnlyList<int> WithoutGenreIds { get; init; } = [];
+
     /// <summary>People who are in a film or made it, all of them. Films only: the database cannot filter a show by people.</summary>
     public IReadOnlyList<int> PersonIds { get; init; } = [];
 

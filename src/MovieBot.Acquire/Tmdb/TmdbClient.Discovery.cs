@@ -99,16 +99,21 @@ public sealed partial class TmdbClient
         var settings = options.Value;
         if (!settings.IsConfigured || Space(query.Kind) is not { } space || count <= 0) return [];
 
+        // The database orders by a plain average, which puts a title a few hundred people rated above
+        // the ones everybody has seen. A sort by rating reads the most voted titles instead and
+        // orders them here by a rating weighted by their votes.
+        var byRating = query.Sort == DiscoverSorts.Rating;
+        var wanted = byRating ? RatingPoolPages * PageSize : count;
         var parameters = Parameters(query, settings.Language);
         var found = new List<ListedTitle>();
-        for (var page = 1; found.Count < count && page <= (count + PageSize - 1) / PageSize; page++)
+        for (var page = 1; found.Count < wanted && page <= (wanted + PageSize - 1) / PageSize; page++)
         {
             var answer = await GetAsync($"discover/{space}?{parameters}&page={page}", TmdbJsonContext.Default.TmdbTitlePage, ct);
             var results = answer?.Results ?? [];
             found.AddRange(results.Select(r => Listed(r, query.Kind)).OfType<ListedTitle>());
             if (results.Count < PageSize) break;
         }
-        return found.Take(count).ToList();
+        return (byRating ? WeightedRating.Order(found) : found).Take(count).ToList();
     }
 
     /// <summary>
@@ -293,7 +298,7 @@ public sealed partial class TmdbClient
         var dates = film ? "primary_release_date" : "first_air_date";
         var sort = query.Sort switch
         {
-            DiscoverSorts.Rating => "vote_average.desc",
+            DiscoverSorts.Rating => "vote_count.desc",
             DiscoverSorts.Newest => dates + ".desc",
             DiscoverSorts.Oldest => dates + ".asc",
             _ => "popularity.desc",
@@ -313,10 +318,16 @@ public sealed partial class TmdbClient
         if (query.To is { } to) parameters[dates + ".lte"] = Iso(to);
         if (query.MinRating is { } rating) parameters["vote_average.gte"] = rating.ToString("0.0", CultureInfo.InvariantCulture);
         if (query.MinVotes is { } votes) parameters["vote_count.gte"] = votes.ToString(CultureInfo.InvariantCulture);
-        if (!film && query.GenreIds.Count == 0) parameters["without_genres"] = string.Join("%7C", UnscriptedShowGenres);
+
+        IEnumerable<int> without = query.WithoutGenreIds;
+        if (!film && query.GenreIds.Count == 0) without = without.Concat(UnscriptedShowGenres);
+        if (without.Distinct().ToList() is { Count: > 0 } left) parameters["without_genres"] = string.Join("%7C", left);
 
         return string.Join('&', parameters.Select(p => $"{p.Key}={(p.Key == "without_genres" ? p.Value : Uri.EscapeDataString(p.Value))}"));
     }
+
+    /// <summary>How many pages of the most voted titles a sort by rating reads and orders.</summary>
+    private const int RatingPoolPages = 5;
 
     private static string Iso(DateOnly day) => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
