@@ -33,6 +33,12 @@ public sealed record FilmDetails
 
     public string? Tagline { get; init; }
 
+    /// <summary>
+    /// The database's keywords for the film: <c>time loop</c>, <c>black and white</c>. Null in a
+    /// description kept before the database was asked for them; empty when it names none.
+    /// </summary>
+    public IReadOnlyList<string>? Keywords { get; init; }
+
     /// <summary>The database's own rating out of ten, from its users' votes. Absent with no votes.</summary>
     public double? Rating { get; init; }
 

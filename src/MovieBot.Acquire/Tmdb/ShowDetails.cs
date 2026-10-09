@@ -37,6 +37,12 @@ public sealed record ShowDetails
 
     public string? Tagline { get; init; }
 
+    /// <summary>
+    /// The database's keywords for the show. Null in a description kept before the database was
+    /// asked for them; empty when it names none.
+    /// </summary>
+    public IReadOnlyList<string>? Keywords { get; init; }
+
     /// <summary>Null when nobody has voted: a rating with no votes behind it is a placeholder.</summary>
     public double? Rating { get; init; }
 

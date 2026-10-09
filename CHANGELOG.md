@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.36.0
+
+`TmdbClient` finds as well as describes. `SearchTitlesAsync` searches films and shows by name,
+`SearchPeopleAsync` a person by name with what they are known for, `FilmographyAsync` lists every title
+a person is credited on once, with everything they did on it and appearances as oneself marked, and
+`DiscoverAsync` takes a `DiscoverQuery` of genres, release window, people, keywords, original language,
+rating and vote floors and a sort. `SimilarAsync` lists the titles the database recommends and counts as
+similar to one, `FindAsync` names the title an IMDb id is, `SearchKeywordsAsync` and `LanguagesAsync`
+resolve a keyword and a language, `CardAsync` gives a title's IMDb id, genres, makers and top-billed
+actors, and `TraitsAsync` its keyword and person ids. Lists name a title by `ListedTitle`. A description
+carries `Keywords`, and `KeywordNames` marks a title the database tags black and white. A request the
+database refuses for being one too many is asked again after the wait it names, three times at most.
+
 ## 0.35.0
 
 `OpenSubtitlesClient.SearchByEpisodeAsync` finds one episode's subtitles by its show's IMDb id and its

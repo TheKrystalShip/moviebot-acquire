@@ -194,7 +194,7 @@ only thing that talks to it.
 ## Film database invariants
 
 `TmdbClient` describes a film or a show from The Movie Database: credits, certificate, genres,
-overview, languages, countries, a rating and its artwork, and for a show its seasons and each
+overview, keywords, languages, countries, a rating and its artwork, and for a show its seasons and each
 season's episodes with their stills. It is the only thing that talks to it.
 
 - **A film or a show is found by its IMDb id.** That is how everything in MovieBot names one, and
@@ -208,6 +208,16 @@ season's episodes with their stills. It is the only thing that talks to it.
   played and the jobs that make a title theirs, never an appearance as themselves or on a talk, news
   or reality show, best known first by votes. A genre's list is its most popular titles with at least
   `GenreVotesAtLeast` votes. Films and shows have separate genre lists (`GenresAsync`).
+- **Finding is separate from describing** (`TmdbClient.Discovery.cs`). A search by name, a person by name
+  (`SearchPeopleAsync`), the whole of a person's work (`FilmographyAsync`: every title once with
+  everything they did on it, and appearances as oneself marked rather than dropped), a discovery
+  (`DiscoverQuery`, whose query string is built in a fixed key order so one question is one string) and
+  the titles the database counts as similar all come back as `ListedTitle`s named by the database's own
+  id; `CardAsync` says which IMDb id a title is and who made it, and the caller keeps the cards it has
+  asked for. The database cannot filter a show by people, so a `DiscoverQuery` for shows carries none. It
+  has no tag for colour, only the keyword `black and white` (`KeywordNames`).
+- **The database's rate limit is honoured.** A `429` is asked again after the wait it names (at most five
+  seconds, three attempts) and then surfaces as an error, never as a missing title.
 - **A title at a glance is one call.** `GlanceAsync` answers the rating, the overview and the release
   date the database's lookup by IMDb id already carries, for a search result; the full description
   is a second call, made when the title is opened.

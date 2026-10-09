@@ -19,7 +19,7 @@ namespace TheKrystalShip.MovieBot.Acquire.Tmdb;
 ///
 /// The database's terms ask for attribution of anything shown from it; that is the surfaces'.
 /// </summary>
-public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, ILogger<TmdbClient> logger)
+public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, ILogger<TmdbClient> logger)
 {
     private const int CastShown = 12;
 
@@ -50,7 +50,7 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
         }
 
         var movie = await GetAsync(
-            $"movie/{results[0].Id}?append_to_response=credits,release_dates&language={Uri.EscapeDataString(settings.Language)}",
+            $"movie/{results[0].Id}?append_to_response=credits,release_dates,keywords&language={Uri.EscapeDataString(settings.Language)}",
             TmdbJsonContext.Default.TmdbMovie, ct);
         return movie is null ? null : Read(movie, tag, settings);
     }
@@ -105,7 +105,7 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
         }
 
         var tv = await GetAsync(
-            $"tv/{results[0].Id}?append_to_response=aggregate_credits,content_ratings&language={Uri.EscapeDataString(settings.Language)}",
+            $"tv/{results[0].Id}?append_to_response=aggregate_credits,content_ratings,keywords&language={Uri.EscapeDataString(settings.Language)}",
             TmdbJsonContext.Default.TmdbTv, ct);
         return tv is null ? null : ReadShow(tv, tag, settings);
     }
@@ -363,6 +363,7 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
             Genres = Names(tv.Genres?.Select(g => g.Name)),
             Overview = string.IsNullOrWhiteSpace(tv.Overview) ? null : tv.Overview.Trim(),
             Tagline = string.IsNullOrWhiteSpace(tv.Tagline) ? null : tv.Tagline.Trim(),
+            Keywords = Names((tv.Keywords?.Results ?? tv.Keywords?.Keywords)?.Select(k => k.Name)),
             Rating = tv.VoteCount is > 0 && tv.VoteAverage is > 0 ? Math.Round(tv.VoteAverage.Value, 1) : null,
             Votes = tv.VoteCount ?? 0,
             Creators = Names(tv.CreatedBy?.Select(c => c.Name)),
@@ -478,6 +479,7 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
             Genres = Names(movie.Genres?.Select(g => g.Name)),
             Overview = string.IsNullOrWhiteSpace(movie.Overview) ? null : movie.Overview.Trim(),
             Tagline = string.IsNullOrWhiteSpace(movie.Tagline) ? null : movie.Tagline.Trim(),
+            Keywords = Names((movie.Keywords?.Keywords ?? movie.Keywords?.Results)?.Select(k => k.Name)),
             // A rating with no votes behind it is the database's placeholder, not anybody's opinion.
             Rating = movie.VoteCount is > 0 && movie.VoteAverage is > 0 ? Math.Round(movie.VoteAverage.Value, 1) : null,
             Votes = movie.VoteCount ?? 0,
@@ -539,17 +541,33 @@ public sealed class TmdbClient(HttpClient http, IOptions<TmdbOptions> options, I
     private async Task<T?> GetAsync<T>(string path, JsonTypeInfo<T> type, CancellationToken ct)
     {
         var settings = options.Value;
-        using var request = new HttpRequestMessage(HttpMethod.Get, $"{settings.BaseUrl.TrimEnd('/')}/{path}")
+        for (var attempt = 1; ; attempt++)
         {
-            Version = http.DefaultRequestVersion,
-            VersionPolicy = http.DefaultVersionPolicy,
-        };
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ReadAccessToken);
-        request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            using var request = new HttpRequestMessage(HttpMethod.Get, $"{settings.BaseUrl.TrimEnd('/')}/{path}")
+            {
+                Version = http.DefaultRequestVersion,
+                VersionPolicy = http.DefaultVersionPolicy,
+            };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", settings.ReadAccessToken);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
-        using var response = await http.SendAsync(request, ct);
-        if (response.StatusCode == HttpStatusCode.NotFound) return default;
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync(type, ct);
+            using var response = await http.SendAsync(request, ct);
+            if (response.StatusCode == HttpStatusCode.NotFound) return default;
+            if (response.StatusCode == HttpStatusCode.TooManyRequests && attempt < RateLimitAttempts)
+            {
+                // The database says how long to wait; asking again sooner is what it is refusing.
+                var wait = response.Headers.RetryAfter?.Delta ?? TimeSpan.FromSeconds(1);
+                logger.LogInformation("The film database asked for {Seconds} s before the next request.", wait.TotalSeconds);
+                await Task.Delay(wait > MaxRateLimitWait ? MaxRateLimitWait : wait, ct);
+                continue;
+            }
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync(type, ct);
+        }
     }
+
+    /// <summary>How many times a request is made when the database answers that too many have been.</summary>
+    private const int RateLimitAttempts = 3;
+
+    private static readonly TimeSpan MaxRateLimitWait = TimeSpan.FromSeconds(5);
 }

@@ -1,0 +1,382 @@
+using System.Globalization;
+
+namespace TheKrystalShip.MovieBot.Acquire.Tmdb;
+
+// Finding films and shows rather than describing one: a search by name, a person by name and
+// everything they are credited on, a discovery by what a title is like, and the titles the database
+// counts as similar. Every answer names a title by the database's own id; TitleCard says which
+// IMDb id that is, so a caller keeps the cards it has asked for and asks for each title once.
+
+public sealed partial class TmdbClient
+{
+    /// <summary>
+    /// Films and shows by their name or words from it, in the database's order. <paramref name="kind"/>
+    /// limits the answer to films or shows, and null asks for both. Each of <paramref name="pages"/>
+    /// holds twenty. Throws <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<IReadOnlyList<ListedTitle>> SearchTitlesAsync(string query, string? kind, int pages, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || string.IsNullOrWhiteSpace(query)) return [];
+        var space = kind is null ? "multi" : Space(kind);
+        if (space is null) return [];
+
+        var found = new List<ListedTitle>();
+        for (var page = 1; page <= pages; page++)
+        {
+            var answer = await GetAsync(
+                $"search/{space}?include_adult=false&language={Uri.EscapeDataString(settings.Language)}&page={page}"
+                + $"&query={Uri.EscapeDataString(query.Trim())}",
+                TmdbJsonContext.Default.TmdbTitlePage, ct);
+            var results = answer?.Results ?? [];
+            found.AddRange(results.Select(r => Listed(r, kind ?? KindOf(r.MediaType))).OfType<ListedTitle>());
+            if (results.Count < PageSize) break;
+        }
+        return found;
+    }
+
+    /// <summary>People by name, best match first, each with what the database knows them for. Throws <see cref="HttpRequestException"/> when the database cannot be reached.</summary>
+    public async Task<IReadOnlyList<PersonMatch>> SearchPeopleAsync(string query, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || string.IsNullOrWhiteSpace(query)) return [];
+
+        var answer = await GetAsync(
+            $"search/person?include_adult=false&language={Uri.EscapeDataString(settings.Language)}&query={Uri.EscapeDataString(query.Trim())}",
+            TmdbJsonContext.Default.TmdbPersonPage, ct);
+        return (answer?.Results ?? [])
+            .Where(p => p.Id > 0 && !string.IsNullOrWhiteSpace(p.Name))
+            .Select(p => new PersonMatch
+            {
+                TmdbId = p.Id,
+                Name = p.Name!.Trim(),
+                KnownFor = string.IsNullOrWhiteSpace(p.KnownForDepartment) ? null : p.KnownForDepartment.Trim(),
+                ProfilePath = string.IsNullOrEmpty(p.ProfilePath) ? null : p.ProfilePath,
+                Popularity = p.Popularity ?? 0,
+                KnownForTitles = (p.KnownFor ?? [])
+                    .Where(t => KindOf(t.MediaType) is not null && !string.IsNullOrWhiteSpace(t.Title ?? t.Name))
+                    .Take(3)
+                    .Select(t => Day(t.ReleaseDate ?? t.FirstAirDate) is { } day
+                        ? $"{(t.Title ?? t.Name)!.Trim()} ({day.Year})"
+                        : (t.Title ?? t.Name)!.Trim())
+                    .ToList(),
+            })
+            .ToList();
+    }
+
+    /// <summary>The database's keywords matching some words, best match first. Throws <see cref="HttpRequestException"/> when the database cannot be reached.</summary>
+    public async Task<IReadOnlyList<KeywordMatch>> SearchKeywordsAsync(string query, CancellationToken ct)
+    {
+        if (!options.Value.IsConfigured || string.IsNullOrWhiteSpace(query)) return [];
+
+        var answer = await GetAsync($"search/keyword?query={Uri.EscapeDataString(query.Trim())}",
+            TmdbJsonContext.Default.TmdbNamedPage, ct);
+        return (answer?.Results ?? [])
+            .Where(k => k.Id > 0 && !string.IsNullOrWhiteSpace(k.Name))
+            .Select(k => new KeywordMatch { Id = k.Id, Name = k.Name!.Trim() })
+            .ToList();
+    }
+
+    /// <summary>The languages the database names, by code and English name. Throws <see cref="HttpRequestException"/> when the database cannot be reached.</summary>
+    public async Task<IReadOnlyList<LanguageName>> LanguagesAsync(CancellationToken ct)
+    {
+        if (!options.Value.IsConfigured) return [];
+
+        var answer = await GetAsync("configuration/languages", TmdbJsonContext.Default.ListTmdbConfigLanguage, ct);
+        return (answer ?? [])
+            .Where(l => !string.IsNullOrWhiteSpace(l.Code) && !string.IsNullOrWhiteSpace(l.EnglishName ?? l.Name))
+            .Select(l => new LanguageName { Code = l.Code!.Trim(), Name = (l.EnglishName ?? l.Name)!.Trim() })
+            .ToList();
+    }
+
+    /// <summary>
+    /// The films or shows matching a query, at most <paramref name="count"/>, in the sort the query
+    /// names. A list of shows leaves out talk, news and reality. Throws
+    /// <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<IReadOnlyList<ListedTitle>> DiscoverAsync(DiscoverQuery query, int count, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || Space(query.Kind) is not { } space || count <= 0) return [];
+
+        var parameters = Parameters(query, settings.Language);
+        var found = new List<ListedTitle>();
+        for (var page = 1; found.Count < count && page <= (count + PageSize - 1) / PageSize; page++)
+        {
+            var answer = await GetAsync($"discover/{space}?{parameters}&page={page}", TmdbJsonContext.Default.TmdbTitlePage, ct);
+            var results = answer?.Results ?? [];
+            found.AddRange(results.Select(r => Listed(r, query.Kind)).OfType<ListedTitle>());
+            if (results.Count < PageSize) break;
+        }
+        return found.Take(count).ToList();
+    }
+
+    /// <summary>
+    /// What the database counts as similar to a title: its recommendations first, the titles people
+    /// who watched it went on to watch, then the titles it files alike, over <paramref name="pages"/>
+    /// of each. Throws <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<IReadOnlyList<ListedTitle>> SimilarAsync(string kind, int tmdbId, int pages, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || Space(kind) is not { } space || tmdbId <= 0) return [];
+
+        var seen = new HashSet<int> { tmdbId };
+        var similar = new List<ListedTitle>();
+        foreach (var list in new[] { "recommendations", "similar" })
+        {
+            for (var page = 1; page <= pages; page++)
+            {
+                var answer = await GetAsync(
+                    $"{space}/{tmdbId}/{list}?language={Uri.EscapeDataString(settings.Language)}&page={page}",
+                    TmdbJsonContext.Default.TmdbTitlePage, ct);
+                var results = answer?.Results ?? [];
+                similar.AddRange(results.Select(r => Listed(r, kind)).OfType<ListedTitle>().Where(t => seen.Add(t.TmdbId)));
+                if (results.Count < PageSize) break;
+            }
+        }
+        return similar;
+    }
+
+    /// <summary>
+    /// The title an IMDb id names, a film where it names both; null when the database has neither
+    /// under it. Throws <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<TitleKey?> FindAsync(string imdbId, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || ImdbId.ToTag(ImdbId.ToNumber(imdbId)) is not { } tag) return null;
+
+        var found = await GetAsync($"find/{tag}?external_source=imdb_id&language={Uri.EscapeDataString(settings.Language)}",
+            TmdbJsonContext.Default.TmdbFindResponse, ct);
+        return found?.MovieResults is { Count: > 0 } films ? new TitleKey { Kind = "film", TmdbId = films[0].Id }
+            : found?.TvResults is { Count: > 0 } shows ? new TitleKey { Kind = "show", TmdbId = shows[0].Id }
+            : null;
+    }
+
+    /// <summary>
+    /// A person and every title they are credited on, cast and crew, films and shows, with nothing
+    /// left out and no title named by its IMDb id; null when the database has nobody under the id.
+    /// A title credited more than one way is one entry with every way joined. Throws
+    /// <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<Filmography?> FilmographyAsync(int personId, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || personId <= 0) return null;
+
+        var person = await GetAsync(
+            $"person/{personId}?append_to_response=combined_credits&language={Uri.EscapeDataString(settings.Language)}",
+            TmdbJsonContext.Default.TmdbPerson, ct);
+        if (person is null || string.IsNullOrWhiteSpace(person.Name)) return null;
+
+        var credited = new Dictionary<(string Kind, int Id), Credited>();
+        Credited Entry(TmdbListedTitle title, string kind)
+        {
+            if (!credited.TryGetValue((kind, title.Id), out var entry))
+                credited[(kind, title.Id)] = entry = new Credited(title, kind);
+            return entry;
+        }
+
+        foreach (var part in person.CombinedCredits?.Cast ?? [])
+        {
+            if (KindOf(part.MediaType) is not { } kind || part.Adult == true) continue;
+            var entry = Entry(part, kind);
+            entry.AddRole(part.Character);
+            if (IsAppearance(part)) entry.Appeared = true;
+            else entry.Acting = true;
+        }
+        foreach (var job in person.CombinedCredits?.Crew ?? [])
+        {
+            if (KindOf(job.MediaType) is not { } kind || job.Adult == true) continue;
+            var entry = Entry(job, kind);
+            entry.AddRole(job.Job);
+            entry.Crew = true;
+            if (string.Equals(job.Department, "Directing", StringComparison.OrdinalIgnoreCase)) entry.Directing = true;
+            if (string.Equals(job.Department, "Writing", StringComparison.OrdinalIgnoreCase)) entry.Writing = true;
+        }
+
+        return new Filmography
+        {
+            TmdbId = person.Id,
+            Name = person.Name.Trim(),
+            KnownFor = string.IsNullOrWhiteSpace(person.KnownForDepartment) ? null : person.KnownForDepartment.Trim(),
+            ProfilePath = string.IsNullOrEmpty(person.ProfilePath) ? null : person.ProfilePath,
+            Credits = credited.Values
+                .Where(c => !string.IsNullOrWhiteSpace(c.Title.Title ?? c.Title.Name))
+                .Select(c => c.Read())
+                .ToList(),
+        };
+    }
+
+    /// <summary>
+    /// The IMDb id, genres, makers and top-billed actors of a title, in one call; null when the
+    /// database has no such title. Throws <see cref="HttpRequestException"/> when the database cannot
+    /// be reached.
+    /// </summary>
+    public async Task<TitleCard?> CardAsync(string kind, int tmdbId, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || tmdbId <= 0) return null;
+        var language = Uri.EscapeDataString(settings.Language);
+
+        if (kind == "film")
+        {
+            var movie = await GetAsync($"movie/{tmdbId}?append_to_response=credits&language={language}", TmdbJsonContext.Default.TmdbMovie, ct);
+            if (movie is null) return null;
+            return new TitleCard
+            {
+                TmdbId = movie.Id,
+                Kind = kind,
+                ImdbId = ImdbId.ToTag(ImdbId.ToNumber(movie.ImdbId)),
+                Title = (movie.Title ?? movie.OriginalTitle ?? "").Trim(),
+                Released = Day(movie.ReleaseDate),
+                Status = string.IsNullOrWhiteSpace(movie.Status) ? null : movie.Status.Trim(),
+                Genres = Names(movie.Genres?.Select(g => g.Name)),
+                MadeBy = Names((movie.Credits?.Crew ?? []).Where(c => string.Equals(c.Job, "Director", StringComparison.OrdinalIgnoreCase)).Select(c => c.Name)),
+                Starring = Names((movie.Credits?.Cast ?? []).OrderBy(c => c.Order ?? int.MaxValue).Select(c => c.Name).Take(2)),
+                OriginalLanguage = string.IsNullOrEmpty(movie.OriginalLanguage) ? null : movie.OriginalLanguage,
+            };
+        }
+
+        if (kind != "show") return null;
+        var tv = await GetAsync($"tv/{tmdbId}?append_to_response=external_ids,aggregate_credits&language={language}", TmdbJsonContext.Default.TmdbTv, ct);
+        if (tv is null) return null;
+        return new TitleCard
+        {
+            TmdbId = tv.Id,
+            Kind = kind,
+            ImdbId = ImdbId.ToTag(ImdbId.ToNumber(tv.ExternalIds?.ImdbId)),
+            Title = (tv.Name ?? tv.OriginalName ?? "").Trim(),
+            Released = Day(tv.FirstAirDate),
+            Status = string.IsNullOrWhiteSpace(tv.Status) ? null : tv.Status.Trim(),
+            Genres = Names(tv.Genres?.Select(g => g.Name)),
+            MadeBy = Names(tv.CreatedBy?.Select(c => c.Name)),
+            Starring = Names((tv.AggregateCredits?.Cast ?? []).OrderBy(c => c.Order ?? int.MaxValue).Select(c => c.Name).Take(2)),
+            OriginalLanguage = string.IsNullOrEmpty(tv.OriginalLanguage) ? null : tv.OriginalLanguage,
+        };
+    }
+
+    /// <summary>
+    /// The keywords a title is tagged with and, for a film, the people in it and behind it, as ids;
+    /// null when the database has no such title. Throws <see cref="HttpRequestException"/> when the
+    /// database cannot be reached.
+    /// </summary>
+    public async Task<TitleTraits?> TraitsAsync(string kind, int tmdbId, CancellationToken ct)
+    {
+        if (!options.Value.IsConfigured || tmdbId <= 0) return null;
+
+        if (kind == "film")
+        {
+            var movie = await GetAsync($"movie/{tmdbId}?append_to_response=keywords,credits", TmdbJsonContext.Default.TmdbMovie, ct);
+            if (movie is null) return null;
+            return new TitleTraits
+            {
+                Keywords = (movie.Keywords?.Keywords ?? movie.Keywords?.Results ?? []).Select(k => k.Id).Where(id => id > 0).ToList(),
+                People = (movie.Credits?.Cast ?? []).Select(c => c.Id)
+                    .Concat((movie.Credits?.Crew ?? []).Select(c => c.Id)).Where(id => id > 0).Distinct().ToList(),
+            };
+        }
+
+        if (kind != "show") return null;
+        var tv = await GetAsync($"tv/{tmdbId}?append_to_response=keywords", TmdbJsonContext.Default.TmdbTv, ct);
+        return tv is null ? null : new TitleTraits
+        {
+            Keywords = (tv.Keywords?.Results ?? tv.Keywords?.Keywords ?? []).Select(k => k.Id).Where(id => id > 0).ToList(),
+        };
+    }
+
+    /// <summary>The query string of a discovery, its keys in order so one query is one string.</summary>
+    internal static string Parameters(DiscoverQuery query, string language)
+    {
+        var film = query.Kind == "film";
+        var dates = film ? "primary_release_date" : "first_air_date";
+        var sort = query.Sort switch
+        {
+            DiscoverSorts.Rating => "vote_average.desc",
+            DiscoverSorts.Newest => dates + ".desc",
+            DiscoverSorts.Oldest => dates + ".asc",
+            _ => "popularity.desc",
+        };
+
+        var parameters = new SortedDictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["include_adult"] = "false",
+            ["language"] = language,
+            ["sort_by"] = sort,
+        };
+        if (query.GenreIds.Count > 0) parameters["with_genres"] = string.Join(',', query.GenreIds);
+        if (query.KeywordIds.Count > 0) parameters["with_keywords"] = string.Join(',', query.KeywordIds);
+        if (film && query.PersonIds.Count > 0) parameters["with_people"] = string.Join(',', query.PersonIds);
+        if (!string.IsNullOrWhiteSpace(query.Language)) parameters["with_original_language"] = query.Language.Trim();
+        if (query.From is { } from) parameters[dates + ".gte"] = Iso(from);
+        if (query.To is { } to) parameters[dates + ".lte"] = Iso(to);
+        if (query.MinRating is { } rating) parameters["vote_average.gte"] = rating.ToString("0.0", CultureInfo.InvariantCulture);
+        if (query.MinVotes is { } votes) parameters["vote_count.gte"] = votes.ToString(CultureInfo.InvariantCulture);
+        if (!film && query.GenreIds.Count == 0) parameters["without_genres"] = string.Join("%7C", UnscriptedShowGenres);
+
+        return string.Join('&', parameters.Select(p => $"{p.Key}={(p.Key == "without_genres" ? p.Value : Uri.EscapeDataString(p.Value))}"));
+    }
+
+    private static string Iso(DateOnly day) => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
+    /// <summary>A list's entry as a title, null for an adult one, one with no name or one whose kind is not known.</summary>
+    private static ListedTitle? Listed(TmdbListedTitle title, string? kind)
+    {
+        var name = title.Title ?? title.Name;
+        if (kind is null || title.Adult == true || string.IsNullOrWhiteSpace(name)) return null;
+        return new ListedTitle
+        {
+            TmdbId = title.Id,
+            Kind = kind,
+            Title = name.Trim(),
+            Released = Day(title.ReleaseDate ?? title.FirstAirDate),
+            Rating = title.VoteCount is > 0 && title.VoteAverage is > 0 ? Math.Round(title.VoteAverage.Value, 1) : null,
+            Votes = title.VoteCount ?? 0,
+            Overview = string.IsNullOrWhiteSpace(title.Overview) ? null : title.Overview.Trim(),
+            PosterPath = string.IsNullOrEmpty(title.PosterPath) ? null : title.PosterPath,
+            GenreIds = title.GenreIds?.ToList() ?? [],
+            OriginalLanguage = string.IsNullOrEmpty(title.OriginalLanguage) ? null : title.OriginalLanguage,
+            Popularity = title.Popularity ?? 0,
+        };
+    }
+
+    /// <summary>A title's credits gathered up: every way a person is credited on it.</summary>
+    private sealed class Credited(TmdbListedTitle title, string kind)
+    {
+        private readonly List<string> _roles = [];
+
+        public TmdbListedTitle Title { get; } = title;
+        public bool Acting { get; set; }
+        public bool Appeared { get; set; }
+        public bool Crew { get; set; }
+        public bool Directing { get; set; }
+        public bool Writing { get; set; }
+
+        public void AddRole(string? role)
+        {
+            if (!string.IsNullOrWhiteSpace(role) && !_roles.Contains(role.Trim(), StringComparer.OrdinalIgnoreCase))
+                _roles.Add(role.Trim());
+        }
+
+        public FilmCredit Read() => new()
+        {
+            TmdbId = Title.Id,
+            Kind = kind,
+            Title = (Title.Title ?? Title.Name)!.Trim(),
+            Released = Day(Title.ReleaseDate ?? Title.FirstAirDate),
+            Role = _roles.Count > 0 ? string.Join(" · ", _roles) : null,
+            Acting = Acting,
+            Directing = Directing,
+            Writing = Writing,
+            Appearance = Appeared && !Acting && !Crew,
+            Votes = Title.VoteCount ?? 0,
+            Rating = Title.VoteCount is > 0 && Title.VoteAverage is > 0 ? Math.Round(Title.VoteAverage.Value, 1) : null,
+            Overview = string.IsNullOrWhiteSpace(Title.Overview) ? null : Title.Overview.Trim(),
+            PosterPath = string.IsNullOrEmpty(Title.PosterPath) ? null : Title.PosterPath,
+            GenreIds = Title.GenreIds?.ToList() ?? [],
+            OriginalLanguage = string.IsNullOrEmpty(Title.OriginalLanguage) ? null : Title.OriginalLanguage,
+            Popularity = Title.Popularity ?? 0,
+        };
+    }
+}

@@ -37,6 +37,15 @@ public sealed record TmdbTv
     [JsonPropertyName("last_episode_to_air")] public TmdbEpisode? LastEpisodeToAir { get; init; }
     [JsonPropertyName("aggregate_credits")] public TmdbAggregateCredits? AggregateCredits { get; init; }
     [JsonPropertyName("content_ratings")] public TmdbContentRatings? ContentRatings { get; init; }
+    [JsonPropertyName("external_ids")] public TmdbExternalIds? ExternalIds { get; init; }
+    [JsonPropertyName("keywords")] public TmdbKeywords? Keywords { get; init; }
+}
+
+/// <summary>A title's keywords: a film lists them under <c>keywords</c>, a show under <c>results</c>.</summary>
+public sealed record TmdbKeywords
+{
+    [JsonPropertyName("keywords")] public IReadOnlyList<TmdbNamed>? Keywords { get; init; }
+    [JsonPropertyName("results")] public IReadOnlyList<TmdbNamed>? Results { get; init; }
 }
 
 public sealed record TmdbTvSeason
@@ -133,6 +142,37 @@ public sealed record TmdbListedTitle
     [JsonPropertyName("media_type")] public string? MediaType { get; init; }
     [JsonPropertyName("character")] public string? Character { get; init; }
     [JsonPropertyName("job")] public string? Job { get; init; }
+    [JsonPropertyName("department")] public string? Department { get; init; }
+    [JsonPropertyName("original_language")] public string? OriginalLanguage { get; init; }
+}
+
+/// <summary>A person a name search found, with the titles the database knows them for.</summary>
+public sealed record TmdbPersonHit
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("known_for_department")] public string? KnownForDepartment { get; init; }
+    [JsonPropertyName("profile_path")] public string? ProfilePath { get; init; }
+    [JsonPropertyName("popularity")] public double? Popularity { get; init; }
+    [JsonPropertyName("known_for")] public IReadOnlyList<TmdbListedTitle>? KnownFor { get; init; }
+}
+
+public sealed record TmdbPersonPage
+{
+    [JsonPropertyName("results")] public IReadOnlyList<TmdbPersonHit>? Results { get; init; }
+}
+
+/// <summary>A page of genres, keywords or the like: each an id and a name.</summary>
+public sealed record TmdbNamedPage
+{
+    [JsonPropertyName("results")] public IReadOnlyList<TmdbNamed>? Results { get; init; }
+}
+
+public sealed record TmdbConfigLanguage
+{
+    [JsonPropertyName("iso_639_1")] public string? Code { get; init; }
+    [JsonPropertyName("english_name")] public string? EnglishName { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
 }
 
 public sealed record TmdbPerson
@@ -180,6 +220,8 @@ public sealed record TmdbMovie
     [JsonPropertyName("production_countries")] public IReadOnlyList<TmdbNamed>? ProductionCountries { get; init; }
     [JsonPropertyName("credits")] public TmdbCredits? Credits { get; init; }
     [JsonPropertyName("release_dates")] public TmdbReleaseDates? ReleaseDates { get; init; }
+    [JsonPropertyName("keywords")] public TmdbKeywords? Keywords { get; init; }
+    [JsonPropertyName("status")] public string? Status { get; init; }
 }
 
 /// <summary>A genre, a network or a person by name; <c>id</c> is the database's where it gives one.</summary>
@@ -245,4 +287,7 @@ public sealed record TmdbRelease
 [JsonSerializable(typeof(TmdbExternalIds))]
 [JsonSerializable(typeof(TmdbPerson))]
 [JsonSerializable(typeof(TmdbGenreList))]
+[JsonSerializable(typeof(TmdbPersonPage))]
+[JsonSerializable(typeof(TmdbNamedPage))]
+[JsonSerializable(typeof(List<TmdbConfigLanguage>))]
 public partial class TmdbJsonContext : JsonSerializerContext;
