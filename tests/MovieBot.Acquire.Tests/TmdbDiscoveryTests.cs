@@ -158,6 +158,120 @@ public class TmdbDiscoveryTests
             asked);
     }
 
+    [Fact]
+    public async Task A_discovery_asks_for_any_of_several_and_for_runtimes_votes_certificates_companies_and_countries()
+    {
+        string? asked = null;
+        await Client(request =>
+        {
+            asked = Decoded(request);
+            return Json("""{ "results": [] }""");
+        }).DiscoverAsync(new DiscoverQuery
+        {
+            Kind = "film",
+            AnyGenreIds = [80, 53],
+            AnyKeywordIds = [326438, 157171],
+            AnyLanguages = ["sv", "da"],
+            OriginCountry = "SE",
+            CompanyIds = [10342, 3],
+            NetworkIds = [49],
+            MinRuntime = 60,
+            MaxRuntime = 90,
+            MaxRating = 5,
+            MaxVotes = 1500,
+            MaxCertification = "PG",
+            AiringFrom = new DateOnly(2026, 1, 1),
+        }, 20, CancellationToken.None);
+
+        Assert.Equal(
+            "/3/discover/movie?certification.lte=PG&certification_country=US&include_adult=false&language=en-US&sort_by=popularity.desc"
+            + "&vote_average.lte=5.0&vote_count.lte=1500&with_companies=10342|3&with_genres=80|53&with_keywords=326438|157171"
+            + "&with_origin_country=SE&with_original_language=sv|da&with_runtime.gte=60&with_runtime.lte=90&page=1",
+            asked);
+    }
+
+    [Fact]
+    public async Task A_discovery_of_shows_asks_for_networks_what_airs_in_a_window_and_what_a_show_is()
+    {
+        string? asked = null;
+        await Client(request =>
+        {
+            asked = Decoded(request);
+            return Json("""{ "results": [] }""");
+        }).DiscoverAsync(new DiscoverQuery
+        {
+            Kind = "show",
+            NetworkIds = [49, 2552],
+            AiringFrom = new DateOnly(2026, 10, 4),
+            AiringTo = new DateOnly(2026, 10, 10),
+            ShowStatus = ShowStatuses.Ended,
+            ShowType = ShowTypes.Miniseries,
+            MaxCertification = "PG",
+        }, 20, CancellationToken.None);
+
+        Assert.Contains("with_networks=49|2552", asked);
+        Assert.Contains("air_date.gte=2026-10-04&air_date.lte=2026-10-10", asked);
+        Assert.Contains("with_status=3", asked);
+        Assert.Contains("with_type=2", asked);
+        Assert.DoesNotContain("certification", asked);
+    }
+
+    [Fact]
+    public async Task A_discovery_cannot_ask_for_all_of_and_any_of_at_once()
+    {
+        var client = Client(_ => Json("""{ "results": [] }"""));
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            client.DiscoverAsync(new DiscoverQuery { Kind = "film", GenreIds = [27], AnyGenreIds = [53] }, 20, CancellationToken.None));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            client.DiscoverAsync(new DiscoverQuery { Kind = "film", Language = "ko", AnyLanguages = ["ja"] }, 20, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task A_chart_names_its_kind_reads_the_regions_cinemas_and_leaves_unscripted_shows_out()
+    {
+        var asked = new List<string>();
+        var client = Client(request =>
+        {
+            asked.Add(Decoded(request));
+            return Json(request.RequestUri!.AbsolutePath.Contains("/tv/")
+                ? """{ "results": [ { "id": 1, "name": "Slow Horses", "genre_ids": [80] }, { "id": 2, "name": "A Talk Show", "genre_ids": [10767] } ] }"""
+                : """{ "results": [ { "id": 3, "title": "Heat", "release_date": "1995-12-15" } ] }""");
+        });
+
+        var today = await client.ChartAsync(TitleChart.ShowsTrendingToday, 20, CancellationToken.None);
+        var cinemas = await client.ChartAsync(TitleChart.InCinemas, 20, CancellationToken.None);
+        await client.ChartAsync(TitleChart.FilmsTrendingToday, 20, CancellationToken.None);
+
+        Assert.Equal([("show", "Slow Horses")], today.Select(t => (t.Kind, t.Title)));
+        Assert.Equal([("film", "Heat")], cinemas.Select(t => (t.Kind, t.Title)));
+        Assert.Equal(
+            ["/3/trending/tv/day?language=en-US&page=1", "/3/movie/now_playing?language=en-US&region=US&page=1", "/3/trending/movie/day?language=en-US&page=1"],
+            asked);
+    }
+
+    [Fact]
+    public async Task A_collection_lists_its_films_first_released_first_and_one_with_no_date_last()
+    {
+        var collection = await Client(_ => Json("""
+            { "id": 10, "name": "Star Wars Collection", "parts": [
+              { "id": 3, "title": "Return of the Jedi", "release_date": "1983-05-25" },
+              { "id": 9, "title": "Untitled", "release_date": "" },
+              { "id": 1, "title": "Star Wars", "release_date": "1977-05-25" },
+              { "id": 2, "title": "The Empire Strikes Back", "release_date": "1980-05-20" } ] }
+            """)).CollectionAsync(10, CancellationToken.None);
+
+        Assert.Equal("Star Wars Collection", collection!.Name);
+        Assert.Equal(["Star Wars", "The Empire Strikes Back", "Return of the Jedi", "Untitled"], collection.Films.Select(f => f.Title));
+        Assert.All(collection.Films, f => Assert.Equal("film", f.Kind));
+    }
+
+    [Fact]
+    public async Task No_collection_under_the_id_is_none()
+    {
+        Assert.Null(await Client(_ => Json("{}", HttpStatusCode.NotFound)).CollectionAsync(4, CancellationToken.None));
+    }
+
     [Theory]
     [InlineData(DiscoverSorts.Popular, "popularity.desc")]
     [InlineData(DiscoverSorts.Rating, "vote_count.desc")]

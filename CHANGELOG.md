@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.39.0
+
+`DiscoverQuery` asks for any of several genres, keywords or original languages, a country of origin,
+companies, a show's networks, a runtime range, a rating and vote ceiling, a film's highest
+certificate in the database's region, the days a show has an episode airing, and a show's status
+and type (`ShowStatuses`, `ShowTypes`); a query naming one list both all of and any of is an
+`ArgumentException`, since the database reads one parameter one way. `TmdbClient.ChartAsync` reads
+the database's own lists (`TitleChart`: films and shows trending today, films in cinemas in the
+region), and `CollectionAsync` a series' films first released first.
+
 ## 0.38.0
 
 `TmdbClient.GenreAsync` takes several genres, a title listed under all of them, and an original language

@@ -104,7 +104,7 @@ public sealed partial class TmdbClient
         // orders them here by a rating weighted by their votes.
         var byRating = query.Sort == DiscoverSorts.Rating;
         var wanted = byRating ? RatingPoolPages * PageSize : count;
-        var parameters = Parameters(query, settings.Language);
+        var parameters = Parameters(query, settings.Language, settings.Region);
         var found = new List<ListedTitle>();
         for (var page = 1; found.Count < wanted && page <= (wanted + PageSize - 1) / PageSize; page++)
         {
@@ -114,6 +114,59 @@ public sealed partial class TmdbClient
             if (results.Count < PageSize) break;
         }
         return (byRating ? WeightedRating.Order(found) : found).Take(count).ToList();
+    }
+
+    /// <summary>
+    /// One of the database's own lists, at most <paramref name="count"/>, in its order. Throws
+    /// <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<IReadOnlyList<ListedTitle>> ChartAsync(TitleChart chart, int count, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || count <= 0) return [];
+
+        var language = Uri.EscapeDataString(settings.Language);
+        var (path, kind) = chart switch
+        {
+            TitleChart.FilmsTrendingToday => ($"trending/movie/day?language={language}", "film"),
+            TitleChart.ShowsTrendingToday => ($"trending/tv/day?language={language}", "show"),
+            _ => ($"movie/now_playing?language={language}&region={Uri.EscapeDataString(settings.Region)}", "film"),
+        };
+        var found = new List<ListedTitle>();
+        for (var page = 1; found.Count < count && page <= (count + PageSize - 1) / PageSize; page++)
+        {
+            var answer = await GetAsync($"{path}&page={page}", TmdbJsonContext.Default.TmdbTitlePage, ct);
+            var results = answer?.Results ?? [];
+            found.AddRange(results.Select(r => Listed(r, kind)).OfType<ListedTitle>()
+                .Where(t => kind == "film" || !t.GenreIds.Any(UnscriptedShowGenres.Contains)));
+            if (results.Count < PageSize) break;
+        }
+        return found.Take(count).ToList();
+    }
+
+    /// <summary>
+    /// The films of one series, the first released first; null when the database has no collection
+    /// under the id. Throws <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<TitleCollection?> CollectionAsync(int collectionId, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || collectionId <= 0) return null;
+
+        var answer = await GetAsync($"collection/{collectionId}?language={Uri.EscapeDataString(settings.Language)}",
+            TmdbJsonContext.Default.TmdbCollection, ct);
+        if (answer is null || string.IsNullOrWhiteSpace(answer.Name)) return null;
+        return new TitleCollection
+        {
+            TmdbId = answer.Id,
+            Name = answer.Name.Trim(),
+            Films = (answer.Parts ?? [])
+                .Select(p => Listed(p, "film"))
+                .OfType<ListedTitle>()
+                .OrderBy(t => t.Released is null)
+                .ThenBy(t => t.Released)
+                .ToList(),
+        };
     }
 
     /// <summary>
@@ -292,7 +345,7 @@ public sealed partial class TmdbClient
     }
 
     /// <summary>The query string of a discovery, its keys in order so one query is one string.</summary>
-    internal static string Parameters(DiscoverQuery query, string language)
+    internal static string Parameters(DiscoverQuery query, string language, string region)
     {
         var film = query.Kind == "film";
         var dates = film ? "primary_release_date" : "first_air_date";
@@ -310,14 +363,44 @@ public sealed partial class TmdbClient
             ["language"] = language,
             ["sort_by"] = sort,
         };
+        // The database reads a comma as "all of" and a bar as "any of", and one parameter cannot say
+        // both, so a query asks one way or the other.
+        if (query.GenreIds.Count > 0 && query.AnyGenreIds.Count > 0)
+            throw new ArgumentException("A discovery names genres all of or any of, not both.", nameof(query));
+        if (query.KeywordIds.Count > 0 && query.AnyKeywordIds.Count > 0)
+            throw new ArgumentException("A discovery names keywords all of or any of, not both.", nameof(query));
+        if (!string.IsNullOrWhiteSpace(query.Language) && query.AnyLanguages.Count > 0)
+            throw new ArgumentException("A discovery names one language or several, not both.", nameof(query));
         if (query.GenreIds.Count > 0) parameters["with_genres"] = string.Join(',', query.GenreIds);
+        else if (query.AnyGenreIds.Count > 0) parameters["with_genres"] = string.Join('|', query.AnyGenreIds);
         if (query.KeywordIds.Count > 0) parameters["with_keywords"] = string.Join(',', query.KeywordIds);
+        else if (query.AnyKeywordIds.Count > 0) parameters["with_keywords"] = string.Join('|', query.AnyKeywordIds);
         if (film && query.PersonIds.Count > 0) parameters["with_people"] = string.Join(',', query.PersonIds);
         if (!string.IsNullOrWhiteSpace(query.Language)) parameters["with_original_language"] = query.Language.Trim();
+        else if (query.AnyLanguages.Count > 0) parameters["with_original_language"] = string.Join('|', query.AnyLanguages.Select(l => l.Trim()));
+        if (!string.IsNullOrWhiteSpace(query.OriginCountry)) parameters["with_origin_country"] = query.OriginCountry.Trim();
+        if (query.CompanyIds.Count > 0) parameters["with_companies"] = string.Join('|', query.CompanyIds);
+        if (!film && query.NetworkIds.Count > 0) parameters["with_networks"] = string.Join('|', query.NetworkIds);
         if (query.From is { } from) parameters[dates + ".gte"] = Iso(from);
         if (query.To is { } to) parameters[dates + ".lte"] = Iso(to);
+        if (query.MinRuntime is { } shortest) parameters["with_runtime.gte"] = shortest.ToString(CultureInfo.InvariantCulture);
+        if (query.MaxRuntime is { } longest) parameters["with_runtime.lte"] = longest.ToString(CultureInfo.InvariantCulture);
         if (query.MinRating is { } rating) parameters["vote_average.gte"] = rating.ToString("0.0", CultureInfo.InvariantCulture);
+        if (query.MaxRating is { } ceiling) parameters["vote_average.lte"] = ceiling.ToString("0.0", CultureInfo.InvariantCulture);
         if (query.MinVotes is { } votes) parameters["vote_count.gte"] = votes.ToString(CultureInfo.InvariantCulture);
+        if (query.MaxVotes is { } most) parameters["vote_count.lte"] = most.ToString(CultureInfo.InvariantCulture);
+        if (film && !string.IsNullOrWhiteSpace(query.MaxCertification))
+        {
+            parameters["certification_country"] = region;
+            parameters["certification.lte"] = query.MaxCertification.Trim();
+        }
+        if (!film)
+        {
+            if (query.AiringFrom is { } airingFrom) parameters["air_date.gte"] = Iso(airingFrom);
+            if (query.AiringTo is { } airingTo) parameters["air_date.lte"] = Iso(airingTo);
+            if (query.ShowStatus is { } status) parameters["with_status"] = status.ToString(CultureInfo.InvariantCulture);
+            if (query.ShowType is { } type) parameters["with_type"] = type.ToString(CultureInfo.InvariantCulture);
+        }
 
         IEnumerable<int> without = query.WithoutGenreIds;
         if (!film && query.GenreIds.Count == 0) without = without.Concat(UnscriptedShowGenres);

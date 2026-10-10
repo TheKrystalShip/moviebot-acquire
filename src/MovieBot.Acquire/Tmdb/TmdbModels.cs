@@ -146,6 +146,14 @@ public sealed record TmdbListedTitle
     [JsonPropertyName("original_language")] public string? OriginalLanguage { get; init; }
 }
 
+/// <summary>A collection: the films of one series, as the database groups them.</summary>
+public sealed record TmdbCollection
+{
+    [JsonPropertyName("id")] public int Id { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("parts")] public IReadOnlyList<TmdbListedTitle>? Parts { get; init; }
+}
+
 /// <summary>A person a name search found, with the titles the database knows them for.</summary>
 public sealed record TmdbPersonHit
 {
@@ -284,6 +292,7 @@ public sealed record TmdbRelease
 [JsonSerializable(typeof(TmdbTv))]
 [JsonSerializable(typeof(TmdbTvSeason))]
 [JsonSerializable(typeof(TmdbTitlePage))]
+[JsonSerializable(typeof(TmdbCollection))]
 [JsonSerializable(typeof(TmdbExternalIds))]
 [JsonSerializable(typeof(TmdbPerson))]
 [JsonSerializable(typeof(TmdbGenreList))]

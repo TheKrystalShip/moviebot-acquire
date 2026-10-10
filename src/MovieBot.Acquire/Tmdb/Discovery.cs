@@ -143,6 +143,9 @@ public sealed record DiscoverQuery
     /// <summary>The genres a title is filed under all of.</summary>
     public IReadOnlyList<int> GenreIds { get; init; } = [];
 
+    /// <summary>Genres a title is filed under at least one of; a query names these or <see cref="GenreIds"/>.</summary>
+    public IReadOnlyList<int> AnyGenreIds { get; init; } = [];
+
     /// <summary>The first day of the release window.</summary>
     public DateOnly? From { get; init; }
 
@@ -158,15 +161,94 @@ public sealed record DiscoverQuery
     /// <summary>The keywords a title is tagged with all of.</summary>
     public IReadOnlyList<int> KeywordIds { get; init; } = [];
 
+    /// <summary>Keywords a title is tagged with at least one of; a query names these or <see cref="KeywordIds"/>.</summary>
+    public IReadOnlyList<int> AnyKeywordIds { get; init; } = [];
+
     /// <summary>The language it was made in, an ISO 639-1 code.</summary>
     public string? Language { get; init; }
 
+    /// <summary>Languages it was made in one of, each an ISO 639-1 code; a query names these or <see cref="Language"/>.</summary>
+    public IReadOnlyList<string> AnyLanguages { get; init; } = [];
+
+    /// <summary>The country it was made in, an ISO 3166-1 code.</summary>
+    public string? OriginCountry { get; init; }
+
+    /// <summary>The companies that made a title, at least one of them.</summary>
+    public IReadOnlyList<int> CompanyIds { get; init; } = [];
+
+    /// <summary>The networks a show is on, at least one of them. Shows only.</summary>
+    public IReadOnlyList<int> NetworkIds { get; init; } = [];
+
+    /// <summary>The shortest a film runs, in minutes; for a show, an episode.</summary>
+    public int? MinRuntime { get; init; }
+
+    /// <summary>The longest a film runs, in minutes; for a show, an episode.</summary>
+    public int? MaxRuntime { get; init; }
+
     public double? MinRating { get; init; }
+
+    public double? MaxRating { get; init; }
 
     public int? MinVotes { get; init; }
 
+    public int? MaxVotes { get; init; }
+
+    /// <summary>
+    /// The highest certificate a film carries in the database's region, such as <c>PG</c>, on that
+    /// region's own scale. Films only.
+    /// </summary>
+    public string? MaxCertification { get; init; }
+
+    /// <summary>The first day a show has an episode airing on. Shows only.</summary>
+    public DateOnly? AiringFrom { get; init; }
+
+    /// <summary>The last day a show has an episode airing on. Shows only.</summary>
+    public DateOnly? AiringTo { get; init; }
+
+    /// <summary>Where a show stands, one of <see cref="ShowStatuses"/>. Shows only.</summary>
+    public int? ShowStatus { get; init; }
+
+    /// <summary>What a show is, one of <see cref="ShowTypes"/>. Shows only.</summary>
+    public int? ShowType { get; init; }
+
     /// <summary>One of <see cref="DiscoverSorts"/>.</summary>
     public string Sort { get; init; } = DiscoverSorts.Popular;
+}
+
+/// <summary>The lists the database keeps of its own rather than answers to a query.</summary>
+public enum TitleChart
+{
+    /// <summary>The films most looked at today.</summary>
+    FilmsTrendingToday,
+
+    /// <summary>The shows most looked at today.</summary>
+    ShowsTrendingToday,
+
+    /// <summary>The films showing in cinemas in the database's region.</summary>
+    InCinemas,
+}
+
+/// <summary>The films of one series, in the order they came out.</summary>
+public sealed record TitleCollection
+{
+    public required int TmdbId { get; init; }
+
+    public required string Name { get; init; }
+
+    /// <summary>Its films, the first released first and those with no date after them.</summary>
+    public IReadOnlyList<ListedTitle> Films { get; init; } = [];
+}
+
+/// <summary>The database's numbers for where a show stands.</summary>
+public static class ShowStatuses
+{
+    public const int Ended = 3;
+}
+
+/// <summary>The database's numbers for what a show is.</summary>
+public static class ShowTypes
+{
+    public const int Miniseries = 2;
 }
 
 /// <summary>What the database's keywords say about a title beyond what it is about.</summary>
