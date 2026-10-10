@@ -9,11 +9,14 @@ half of the MovieBot pipeline: this reaches the tracker, the torrent client and 
 and `moviebot` — the checkout beside it in this workspace — takes what lands on disk and makes it
 watchable.
 
+Its place in the workspace: `../kgsm-docs/components/moviebot-acquire.md`; what a path reference costs:
+`../kgsm-docs/systems/moviebot/build-and-deploy.md`.
+
 **It is a library first, and `moviebot` compiles against this working copy.**
-`MovieBot.Api`, `MovieBot.Bot` and `MovieBot.Handoff` each hold a `ProjectReference` on
-`src/MovieBot.Acquire` by relative path, so a change to a public type here is a change to that
-build in the same pass, and an edit that compiles in this solution can still break the one next
-door. Build both after touching anything public. `moviebot-acquire.slnx` covers the library, the
+`MovieBot.Api`, `MovieBot.Bot`, `MovieBot.Handoff` and `MovieBot.Assistant` each hold a
+`ProjectReference` on `src/MovieBot.Acquire` by relative path, so a change to a public type here is a
+change to that build in the same pass, and an edit that compiles in this solution can still break the
+one next door. Build both after touching anything public. `moviebot-acquire.slnx` covers the library, the
 CLI and the tests; the consumers are outside it.
 
 The `moviebot-acquire` CLI is this repository's own surface onto the same library, and the way
@@ -56,18 +59,11 @@ scripts/package-release.sh        # the release archive, as the release workflow
 
 A tag `v<version>` matching the newest CHANGELOG heading publishes the CLI as a GitHub release.
 **MovieBot's CI and releases check out this repository's `main`**, so a push here that changes a
-public type is a red build there until MovieBot's half is pushed too: push the two together.
+public type is a red build there until MovieBot's half is pushed too: push the two together. The
+CLI's verbs are in the README.
 
-The CLI's verbs: `search <title>` and `imdb <tt…>` rank what the tracker holds, `show <tt|name>`
-lists what it offers for a show season by season, `film <id|name>`
-asks the title index what a film is called, `get <title> [--pick N]` starts a download,
-`downloads` reports what is running and `budget` reports the download directory against its
-ceiling.
-
-This library's code runs on this host inside MovieBot's three services: publishing them carries
-`TheKrystalShip.MovieBot.Acquire.dll` into `/opt/moviebot/{api,bot,handoff}`. A change here
-reaches the running system when those are published, and `moviebot/deploy/CLAUDE.md` holds that
-procedure.
+This library's code runs inside MovieBot's services, so a change here reaches the running system when
+they are published; `../moviebot/deploy/CLAUDE.md` holds that procedure.
 
 ## Search invariants
 
