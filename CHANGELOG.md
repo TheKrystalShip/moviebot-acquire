@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.40.0
+
+`KeywordNames` is gone: a title's keywords are a plain list, and nothing reads one keyword as a fact
+of its own.
+
 ## 0.39.0
 
 `DiscoverQuery` asks for any of several genres, keywords or original languages, a country of origin,

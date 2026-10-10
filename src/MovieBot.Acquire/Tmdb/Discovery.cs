@@ -91,7 +91,7 @@ public sealed record PersonMatch
     public IReadOnlyList<string> KnownForTitles { get; init; } = [];
 }
 
-/// <summary>One of the database's keywords: the vocabulary a film is described by, such as <c>black and white</c>.</summary>
+/// <summary>One of the database's keywords: the vocabulary a film is described by, such as <c>time loop</c>.</summary>
 public sealed record KeywordMatch
 {
     public required int Id { get; init; }
@@ -249,15 +249,4 @@ public static class ShowStatuses
 public static class ShowTypes
 {
     public const int Miniseries = 2;
-}
-
-/// <summary>What the database's keywords say about a title beyond what it is about.</summary>
-public static class KeywordNames
-{
-    /// <summary>The keyword the database tags a film shot in black and white with. It has none for colour: a title not tagged is not known to be in colour.</summary>
-    public const string BlackAndWhite = "black and white";
-
-    /// <summary>Whether the keywords tag the title as black and white.</summary>
-    public static bool MarksBlackAndWhite(IEnumerable<string>? keywords) =>
-        keywords?.Any(k => string.Equals(k, BlackAndWhite, StringComparison.OrdinalIgnoreCase)) == true;
 }

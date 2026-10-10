@@ -119,12 +119,12 @@ public class TmdbDiscoveryTests
     {
         var client = Client(request => request.RequestUri!.AbsolutePath switch
         {
-            "/3/search/keyword" => Json("""{ "results": [ { "id": 12999, "name": "black and white" }, { "id": 0, "name": "zero" } ] }"""),
+            "/3/search/keyword" => Json("""{ "results": [ { "id": 12999, "name": "time loop" }, { "id": 0, "name": "zero" } ] }"""),
             "/3/configuration/languages" => Json("""[ { "iso_639_1": "ko", "english_name": "Korean", "name": "한국어" }, { "iso_639_1": "", "english_name": "None" } ]"""),
             _ => Json("{}", HttpStatusCode.NotFound),
         });
 
-        Assert.Equal([(12999, "black and white")], (await client.SearchKeywordsAsync("black and white", CancellationToken.None)).Select(k => (k.Id, k.Name)));
+        Assert.Equal([(12999, "time loop")], (await client.SearchKeywordsAsync("time loop", CancellationToken.None)).Select(k => (k.Id, k.Name)));
         Assert.Equal([("ko", "Korean")], (await client.LanguagesAsync(CancellationToken.None)).Select(l => (l.Code, l.Name)));
     }
 
@@ -500,7 +500,7 @@ public class TmdbDiscoveryTests
     public async Task A_titles_traits_are_its_keyword_ids_and_for_a_film_everyone_credited_on_it()
     {
         var traits = await Client(_ => Json("""
-            { "id": 7004, "keywords": { "keywords": [ { "id": 12999, "name": "black and white" } ] },
+            { "id": 7004, "keywords": { "keywords": [ { "id": 12999, "name": "time loop" } ] },
               "credits": { "cast": [ { "id": 8001, "name": "Ray" } ], "crew": [ { "id": 7777, "name": "Jo", "job": "Director" }, { "id": 8001, "name": "Ray", "job": "Producer" } ] } }
             """)).TraitsAsync("film", 7004, CancellationToken.None);
 
@@ -513,7 +513,7 @@ public class TmdbDiscoveryTests
     }
 
     [Fact]
-    public async Task A_description_carries_the_keywords_the_database_gives_and_marks_black_and_white()
+    public async Task A_description_carries_the_keywords_the_database_gives()
     {
         var asked = new List<string>();
         var film = await Client(request =>
@@ -521,14 +521,11 @@ public class TmdbDiscoveryTests
             asked.Add(request.RequestUri!.PathAndQuery);
             return Json(request.RequestUri.AbsolutePath.Contains("/find/")
                 ? """{ "movie_results": [ { "id": 7004 } ] }"""
-                : """{ "id": 7004, "title": "Silver Harbour", "keywords": { "keywords": [ { "id": 12999, "name": "Black and White" }, { "id": 5, "name": "harbour" } ] } }""");
+                : """{ "id": 7004, "title": "Silver Harbour", "keywords": { "keywords": [ { "id": 12999, "name": "Time Loop" }, { "id": 5, "name": "harbour" } ] } }""");
         }).DetailsAsync("tt9000004", CancellationToken.None);
 
         Assert.Contains("keywords", asked[1]);
-        Assert.Equal(["Black and White", "harbour"], film!.Keywords);
-        Assert.True(KeywordNames.MarksBlackAndWhite(film.Keywords));
-        Assert.False(KeywordNames.MarksBlackAndWhite(["heist"]));
-        Assert.False(KeywordNames.MarksBlackAndWhite(null));
+        Assert.Equal(["Time Loop", "harbour"], film!.Keywords);
     }
 
     [Fact]
