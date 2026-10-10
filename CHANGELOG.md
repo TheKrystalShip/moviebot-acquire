@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.38.0
+
+`TmdbClient.GenreAsync` takes several genres, a title listed under all of them, and an original language
+to narrow to, which is what a genre's catalogue of anime asks: the genre, Animation, and Japanese.
+
 ## 0.37.0
 
 A discovery sorted by rating reads the five pages of the most voted matches and orders them with

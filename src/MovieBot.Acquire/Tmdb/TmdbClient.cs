@@ -247,19 +247,30 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
     /// talk, news and reality. Throws <see cref="HttpRequestException"/> when the database cannot be
     /// reached.
     /// </summary>
-    public async Task<IReadOnlyList<CatalogueTitle>> GenreAsync(string kind, int genreId, int count, CancellationToken ct)
+    public Task<IReadOnlyList<CatalogueTitle>> GenreAsync(string kind, int genreId, int count, CancellationToken ct) =>
+        GenreAsync(kind, [genreId], null, count, ct);
+
+    /// <summary>
+    /// The films or shows filed under every one of <paramref name="genreIds"/>, and made in
+    /// <paramref name="originalLanguage"/> (an ISO 639-1 code) when it is named, on the terms of a
+    /// single genre's list.
+    /// </summary>
+    public async Task<IReadOnlyList<CatalogueTitle>> GenreAsync(
+        string kind, IReadOnlyList<int> genreIds, string? originalLanguage, int count, CancellationToken ct)
     {
         var settings = options.Value;
-        if (!settings.IsConfigured || Space(kind) is not { } space || genreId <= 0 || count <= 0) return [];
+        if (!settings.IsConfigured || Space(kind) is not { } space || genreIds.Count == 0 || genreIds.Any(id => id <= 0) || count <= 0) return [];
 
         var language = Uri.EscapeDataString(settings.Language);
         var without = kind == "show" ? "&without_genres=" + string.Join("%7C", UnscriptedShowGenres) : "";
+        var genreId = string.Join(",", genreIds.Distinct());
+        var made = string.IsNullOrWhiteSpace(originalLanguage) ? "" : "&with_original_language=" + Uri.EscapeDataString(originalLanguage.Trim());
         var listed = new List<(TmdbListedTitle Title, string Kind, string? Role)>();
         for (var page = 1; listed.Count < count && page <= (count + PageSize - 1) / PageSize; page++)
         {
             var answer = await GetAsync(
                 $"discover/{space}?include_adult=false&language={language}&page={page}&sort_by=popularity.desc"
-                + $"&vote_count.gte={GenreVotesAtLeast}&with_genres={genreId}{without}",
+                + $"&vote_count.gte={GenreVotesAtLeast}&with_genres={genreId}{made}{without}",
                 TmdbJsonContext.Default.TmdbTitlePage, ct);
             var results = answer?.Results ?? [];
             listed.AddRange(results

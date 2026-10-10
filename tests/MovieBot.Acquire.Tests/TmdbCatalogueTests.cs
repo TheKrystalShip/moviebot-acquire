@@ -149,6 +149,24 @@ public class TmdbCatalogueTests
     }
 
     [Fact]
+    public async Task Genres_combine_and_narrow_to_an_original_language()
+    {
+        string? asked = null;
+        await Client(request =>
+        {
+            if (request.RequestUri!.AbsolutePath == "/3/discover/tv")
+            {
+                asked = request.RequestUri.PathAndQuery;
+                return Json("""{ "results": [ { "id": 63926, "name": "One-Punch Man", "first_air_date": "2015-10-05", "vote_count": 900 } ] }""");
+            }
+            return Json("""{ "imdb_id": "tt4508902" }""");
+        }).GenreAsync("show", [16, 10759, 16], "ja", 20, CancellationToken.None);
+
+        Assert.Contains("with_genres=16,10759&", asked);
+        Assert.Contains("with_original_language=ja", asked);
+    }
+
+    [Fact]
     public async Task The_genres_are_listed_per_kind()
     {
         var genres = await Client(request => request.RequestUri!.AbsolutePath == "/3/genre/movie/list"
