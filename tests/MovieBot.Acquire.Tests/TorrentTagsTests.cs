@@ -137,4 +137,39 @@ public class TorrentTagsTests
     [InlineData("watch:room:s05e03:extra")]
     public void A_watch_tag_naming_no_usable_room_reads_as_nothing(string tag) =>
         Assert.Null(TorrentTags.ReadWatch(tag));
+
+    [Fact]
+    public void A_passed_episode_round_trips()
+    {
+        var tag = TorrentTags.Passed(new EpisodeNumber(2, 11));
+
+        Assert.Equal("passed:s02e11", tag);
+        Assert.Equal(new EpisodeNumber(2, 11), TorrentTags.ReadPassed(tag));
+    }
+
+    [Theory]
+    [InlineData("passed:")]
+    [InlineData("passed:s02")]
+    [InlineData("watch:a1b2c3d4:s02e11")]
+    [InlineData("keep:s02e11")]
+    public void Anything_but_a_passed_tag_reads_as_no_passed_episode(string tag) =>
+        Assert.Null(TorrentTags.ReadPassed(tag));
+
+    [Fact]
+    public void A_keep_names_its_episode_and_no_other()
+    {
+        var tag = TorrentTags.Keep(new EpisodeNumber(2, 4));
+
+        Assert.True(TorrentTags.Keeps(tag, new EpisodeNumber(2, 4)));
+        Assert.False(TorrentTags.Keeps(tag, new EpisodeNumber(2, 5)));
+        Assert.False(TorrentTags.Keeps(tag, new EpisodeNumber(1, 4)));
+    }
+
+    [Fact]
+    public void A_bare_keep_keeps_every_episode() =>
+        Assert.True(TorrentTags.Keeps(TorrentTags.Keep(), new EpisodeNumber(7, 22)));
+
+    [Fact]
+    public void A_room_waiting_on_an_episode_does_not_keep_it() =>
+        Assert.False(TorrentTags.Keeps(TorrentTags.Watch("a1b2c3d4", new EpisodeNumber(2, 4)), new EpisodeNumber(2, 4)));
 }

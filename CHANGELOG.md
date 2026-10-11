@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.41.0
+
+`TorrentTags` names why a show's file is fetched: `Keep` (`keep:sXXeYY`, or a bare `keep` for a
+torrent fetched whole) for any reason other than a room waiting on it, `Passed` (`passed:sXXeYY`) for
+an episode a room moved past, and `PicksNamed` for a torrent added for picked episodes, every file of
+which is switched on by a pick that names why. `AcquisitionService` writes `PicksNamed` on a torrent
+it adds for picked episodes and `keep` on a show's torrent fetched whole, and
+`SwitchOffAsync(hash, path)` stops fetching one file still arriving. A pick from a torrent already
+held puts the newly picked episode alone at the top, every other file still arriving going back to
+normal, and, when it carries `ingest`, removes `ingest-failed`.
+
 ## 0.40.0
 
 `KeywordNames` is gone: a title's keywords are a plain list, and nothing reads one keyword as a fact

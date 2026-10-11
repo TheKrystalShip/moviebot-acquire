@@ -135,9 +135,7 @@ public static partial class TorrentTags
     /// the one somebody pressed.
     /// </summary>
     public static string Watch(string roomId, EpisodeNumber? episode = null) =>
-        episode is { } e
-            ? string.Create(CultureInfo.InvariantCulture, $"{WatchPrefix}{roomId}:s{e.Season:00}e{e.Episode:00}")
-            : $"{WatchPrefix}{roomId}";
+        episode is { } e ? $"{WatchPrefix}{roomId}:{Code(e)}" : $"{WatchPrefix}{roomId}";
 
     /// <summary>Reads a watch tag, or null when it is not one or names no usable room.</summary>
     public static WatchTag? ReadWatch(string tag)
@@ -148,12 +146,58 @@ public static partial class TorrentTags
         if (!IsRoomId(parts[0])) return null;
         if (parts.Length == 1) return new WatchTag(parts[0], null);
 
-        return parts.Length == 2 && EpisodeTag().Match(parts[1]) is { Success: true } m
-            ? new WatchTag(parts[0], new EpisodeNumber(
-                int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture),
-                int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture)))
+        return parts.Length == 2 && ReadEpisode(parts[1]) is { } episode
+            ? new WatchTag(parts[0], episode)
             : null;
     }
+
+    /// <summary>
+    /// Why a file of a show's torrent is fetched when no room is waiting on it, <c>keep:s02e04</c>:
+    /// somebody follows the show, a device wants the episode, it is the next one fetched ahead of a
+    /// room, or it was asked for outright. A bare <c>keep</c> is a torrent fetched whole. A file
+    /// only a room's <see cref="Watch"/> names is fetched for that room alone, and is let go of
+    /// once the room moves past it (<see cref="Passed"/>).
+    /// </summary>
+    public const string KeepPrefix = "keep";
+
+    public static string Keep(EpisodeNumber? episode = null) =>
+        episode is { } e ? $"{KeepPrefix}:{Code(e)}" : KeepPrefix;
+
+    /// <summary>Whether a tag keeps <paramref name="episode"/>: its own <c>keep:</c>, or a bare <c>keep</c>.</summary>
+    public static bool Keeps(string tag, EpisodeNumber episode) =>
+        tag == KeepPrefix || tag == Keep(episode);
+
+    /// <summary>
+    /// A room was waiting on this episode and moved past it before it could play,
+    /// <c>passed:s02e04</c>. Left by whoever saw the room move; the hand-off, which knows whether
+    /// the episode's transcode has begun, switches the file off when nothing else wants it and
+    /// clears the tag either way.
+    /// </summary>
+    public const string PassedPrefix = "passed:";
+
+    public static string Passed(EpisodeNumber episode) => $"{PassedPrefix}{Code(episode)}";
+
+    /// <summary>Reads the episode out of a passed tag, or null when it is not one.</summary>
+    public static EpisodeNumber? ReadPassed(string tag) =>
+        tag.StartsWith(PassedPrefix, StringComparison.Ordinal) ? ReadEpisode(tag[PassedPrefix.Length..]) : null;
+
+    /// <summary>
+    /// Every file this torrent fetches was switched on by a pick that named why on the torrent, a
+    /// <see cref="Watch"/> or a <see cref="Keep"/>. Only such a torrent has a file switched off
+    /// when a room moves past it: in one without it, a file may be fetched for a reason nothing
+    /// recorded.
+    /// </summary>
+    public const string PicksNamed = "picks-named";
+
+    private static string Code(EpisodeNumber e) =>
+        string.Create(CultureInfo.InvariantCulture, $"s{e.Season:00}e{e.Episode:00}");
+
+    private static EpisodeNumber? ReadEpisode(string code) =>
+        EpisodeTag().Match(code) is { Success: true } m
+            ? new EpisodeNumber(
+                int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture),
+                int.Parse(m.Groups[2].Value, CultureInfo.InvariantCulture))
+            : null;
 
     [GeneratedRegex(@"^s(\d{1,3})e(\d{1,4})$")]
     private static partial Regex EpisodeTag();

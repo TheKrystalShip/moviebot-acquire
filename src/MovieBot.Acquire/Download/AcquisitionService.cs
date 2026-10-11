@@ -93,7 +93,9 @@ public sealed class AcquisitionService(
         {
             try
             {
-                var hash = await torrents.AddAsync(torrentFile, _download.ResolveRoot(), tags, ct);
+                // A show's torrent fetched whole keeps every episode, whoever moves past one.
+                IEnumerable<string>? whole = release.IsEpisodic ? [.. tags ?? [], TorrentTags.Keep()] : tags;
+                var hash = await torrents.AddAsync(torrentFile, _download.ResolveRoot(), whole, ct);
 
                 logger.LogInformation(
                     "Started {Release} ({Size}) as {Hash}. {Budget}",
@@ -157,10 +159,21 @@ public sealed class AcquisitionService(
         try
         {
             if (!held)
-                await torrents.AddAsync(torrentFile, _download.ResolveRoot(), tags, ct, stopped: true);
+            {
+                // Added here, so every file it fetches is switched on by a pick that says why.
+                await torrents.AddAsync(torrentFile, _download.ResolveRoot(), [.. tags ?? [], TorrentTags.PicksNamed], ct, stopped: true);
+            }
             else
+            {
                 foreach (var tag in tags ?? [])
                     await torrents.AddTagAsync(hash, tag, ct);
+
+                // Asking for a transcode again withdraws the verdict that none could be made: the
+                // hand-off tries the torrent afresh, and a room waiting on it is not told it failed
+                // before that try has happened.
+                if (tags?.Contains(TorrentTags.NeedsIngest) == true)
+                    await torrents.RemoveTagAsync(hash, TorrentTags.IngestFailed, ct);
+            }
 
             // The client reads the torrent's metadata as it adds it, so the file list arrives a
             // moment after the add returns rather than with it.
@@ -184,6 +197,13 @@ public sealed class AcquisitionService(
             var byEpisode = order.Count == 0 ? on : on
                 .OrderBy(i => order.GetValueOrDefault(listed.First(f => f.Index == i).Name, new EpisodeNumber(int.MaxValue, 0)))
                 .ToList();
+            // In a torrent already fetching, the episode asked for now is the one wanted soonest:
+            // whatever else is still arriving goes back to normal, so it alone is at the top
+            // whatever order the torrent lists its files in.
+            if (held)
+                await torrents.SetFilePriorityAsync(hash, listed
+                    .Where(f => f.Priority > 1 && f.Progress < 1 && !wanted.Contains(f.Name))
+                    .Select(f => f.Index).ToList(), 1, ct);
             await torrents.SetFilePriorityAsync(hash, byEpisode, 1, ct);
             if (byEpisode.Count > 0) await torrents.SetFilePriorityAsync(hash, [byEpisode[0]], MaximumPriority, ct);
             if (byEpisode.Count > 1) await torrents.SetFilePriorityAsync(hash, [byEpisode[1]], HighPriority, ct);
@@ -221,6 +241,20 @@ public sealed class AcquisitionService(
     /// </summary>
     public Task<IReadOnlyList<QBittorrentFile>> FilesAsync(string hash, CancellationToken ct) =>
         torrents.FilesAsync(hash, ct);
+
+    /// <summary>
+    /// Stops fetching one file of a download, by its path as the client lists it. A file already
+    /// whole, or already switched off, is left as it is; false then, and when the client does not
+    /// list the file.
+    /// </summary>
+    public async Task<bool> SwitchOffAsync(string hash, string path, CancellationToken ct)
+    {
+        var file = (await torrents.FilesAsync(hash, ct)).FirstOrDefault(f => f.Name == path);
+        if (file is null || file.Priority == 0 || file.Progress >= 1) return false;
+
+        await torrents.SetFilePriorityAsync(hash, [file.Index], 0, ct);
+        return true;
+    }
 
     /// <summary>Marks a note on a torrent as acted on, so it is not acted on twice.</summary>
     public Task ClearTagAsync(string hash, string tag, CancellationToken ct) =>

@@ -314,7 +314,19 @@ the library owner's clock and not this one.
 - **Picked episodes arrive first-first.** The earliest picked is set to the client's highest file
   priority and the next to its second; the rest stay at normal and follow in the torrent's order,
   which sequential downloading keeps. The client has these three levels for a file and no more, so
-  an exact ladder is not something to build.
+  an exact ladder is not something to build. A pick from a torrent already fetching is the episode
+  wanted soonest: every other file still arriving goes back to normal, so it alone is at the top,
+  whatever order the torrent lists its files in, which need not be episode order.
+- **A file is switched off by its path, and only while it is still arriving** (`SwitchOffAsync`). A
+  whole file costs nothing more to keep, and a file a transcode reads must keep arriving, which only
+  the caller can know.
+- **A torrent added for picked episodes carries `picks-named`**, and a show's torrent fetched whole
+  carries a bare `keep`: in the first, every file switched on was switched on by a pick that says why
+  on the torrent (`watch:` or `keep:`); the second keeps every file. A torrent with neither is one
+  whose files may be fetched for reasons nothing recorded.
+- **Asking for a transcode again withdraws `ingest-failed`.** A pick into a torrent already held that
+  carries `ingest` removes it, so a room waiting on the new ask is not told of a failure before the
+  hand-off has tried again.
 - **Which file is which episode is `EpisodeFiles`, and nowhere else.** The download picks files
   with it and the hand-off ingests them with it; two readings would fetch an episode the other
   never ingests.
@@ -331,11 +343,15 @@ persists it, so the state of that work is kept on the torrent rather than in any
   differently does not throw: the tag is never seen and the work silently never happens.
 - **A tag is cleared by whoever acted on it**, which is what stops the same work being done on
   every pass.
+- **Why a show's file is fetched is a tag.** `watch:<room>:sXXeYY` is a room waiting on the episode,
+  `keep:sXXeYY` any reason that outlasts a room, and `passed:sXXeYY` a room that moved past the
+  episode, left for whoever knows whether the file can be let go of.
 - **A failure gets its own tag rather than leaving the work tag alone.** Left alone, a failure is
   indistinguishable from work still in progress, and whoever is waiting is told nothing at all.
 - **Tags describe the download, never the film in the library.** A torrent is let go of after its
-  seeding window and the film outlives it, so anything about how long the film stays, a keep
-  among it, is held by whoever owns the library and not on a torrent that will not be there.
+  seeding window and the film outlives it, so anything about how long the film stays is held by
+  whoever owns the library and not on a torrent that will not be there. A `keep:` is about a file
+  of the download, never about the film it becomes.
 
 ## Conventions
 
