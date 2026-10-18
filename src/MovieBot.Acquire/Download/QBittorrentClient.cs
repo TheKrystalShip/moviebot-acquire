@@ -398,6 +398,8 @@ public sealed class QBittorrentClient(
         Tags = torrent.Tags
             .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
         Seeded = TimeSpan.FromSeconds(Math.Max(0, torrent.SeedingTime)),
+        UploadedBytes = Math.Max(0, torrent.Uploaded),
+        DownloadedBytes = Math.Max(0, torrent.Downloaded),
     };
 
     /// <summary>

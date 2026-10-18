@@ -265,31 +265,36 @@ season's episodes with their stills. It is the only thing that talks to it.
 
 ## Retention invariants
 
-A download stays for a window of seeding and its torrent and files are then let go. `Retention`
-answers whether a download is due and how long it has left; who removes it, running transcodes and
-what a room holds are the callers' business. How long the transcoded film stays in the library is
-the library owner's clock and not this one.
+A download stays until it has done what the tracker demands of it, and its torrent and files are
+then let go. The tracker lets a torrent be closed once it has seeded its minimum time or reached its
+ratio; a torrent removed here is never resumed, so meeting either is the end of what is owed and the
+source goes at once, the disk being what the next film needs. `Retention` answers whether a download
+is due; who removes it, running transcodes and what a room holds are the callers' business. How long
+the transcoded film stays in the library is the library owner's clock and not this one.
 
 - **The clock is the client's seeding time, never the calendar.** The tracker credits seeding by
   the announces it receives, which happen only while the client runs and the torrent is active,
   and the client's own `seeding_time` counts the same stretches and persists in its resume data.
-  A week is a week of seeding: hours the machine was off count nowhere.
+  Two days are two days of seeding: hours the machine was off count nowhere.
 - **The client's figure can read low, never high.** It is reported as of the torrent's last
   status refresh, and a torrent with no traffic at all may go unrefreshed for a while; an
   announce or a peer brings it up to date. Low delays a prune and never hastens one, which is
   the direction a proxy for a penalised minimum has to err in.
-- **The floor is the tracker's minimum plus a margin, and nothing goes under it.** The client's
-  clock runs ahead of the tracker's by whatever announces did not land, always in the direction
-  of the tracker crediting less. The margin absorbs that; the window sits days above the floor
-  so the two thresholds cannot meet.
-- **The rule holds the floor on its own, and the options refuse to be set under it.** A window
-  shorter than the floor would either be ignored, which makes it a lie, or honoured, which earns
-  the penalty the floor exists to avoid. The options refuse to start that way and the rule refuses
-  again on every answer, for a process that got past validation.
+- **Each threshold is the tracker's plus a margin.** The client's clock runs ahead of the
+  tracker's by whatever announces did not land, and its upload count by whatever was sent since
+  the last one, always in the direction of the tracker crediting less. `MarginHours` and
+  `RatioMargin` absorb that.
+- **A ratio counts only after the least seeding** (`RatioMinimumHours`), which the tracker asks of
+  any torrent closed after its download, and which gives the upload a few announces to be credited.
+- **The ratio is uploaded over downloaded, reckoned here.** The client's own figure divides by the
+  size when nothing was downloaded, as for data checked rather than fetched; the tracker saw no
+  download there, so such a torrent has no ratio and goes on time alone.
+- **The options refuse to start incoherent.** A ratio of zero is met by every download the moment
+  it completes, and a negative margin removes under the tracker's own threshold.
 - **The tracker's own figure is not available.** Its API offers two actions, both searches, and
   the snatchlist that shows the remaining time is a page behind the login cookie. The client's
-  clock is the honest proxy, used with the margin above, and it is never presented as the
-  tracker's number.
+  clock and counts are the honest proxy, used with the margins above, and they are never
+  presented as the tracker's numbers.
 
 ## Download invariants
 
@@ -348,8 +353,8 @@ persists it, so the state of that work is kept on the torrent rather than in any
   episode, left for whoever knows whether the file can be let go of.
 - **A failure gets its own tag rather than leaving the work tag alone.** Left alone, a failure is
   indistinguishable from work still in progress, and whoever is waiting is told nothing at all.
-- **Tags describe the download, never the film in the library.** A torrent is let go of after its
-  seeding window and the film outlives it, so anything about how long the film stays is held by
+- **Tags describe the download, never the film in the library.** A torrent is let go of once its
+  seeding is done and the film outlives it, so anything about how long the film stays is held by
   whoever owns the library and not on a torrent that will not be there. A `keep:` is about a file
   of the download, never about the film it becomes.
 

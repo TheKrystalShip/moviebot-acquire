@@ -26,8 +26,8 @@ relative path, so the two repositories are checked out side by side and move tog
   suggestion index; credits, certificates, seasons and episodes from The Movie Database.
 - **Subtitles.** Search and download through the OpenSubtitles API, with checks that a subtitle
   fits the film it is for.
-- **Disk budget and retention.** A ceiling on the download directory, and a seeding window after
-  which a download is let go.
+- **Disk budget and retention.** A ceiling on the download directory, and the tracker's seeding
+  minimum or ratio, after which a download is let go.
 
 ## Requirements
 
@@ -118,8 +118,9 @@ the file leaves out takes the library's default:
 
 The environment overrides any single key, written `Section__Key` (`Download__MaximumGiB=500`).
 An empty `Download.Root` means `~/Downloads/Movies`. Retention is set under `Retention`:
-`SeedDays` (default 7), and the tracker's minimum seeding time `TrackerMinimumHours` (default 48)
-plus a safety `MarginHours` (default 12), below which nothing is ever removed.
+the tracker's minimum seeding time `TrackerMinimumHours` (default 48) plus a safety `MarginHours`
+(default 12), and the tracker's ratio `TrackerRatio` (default 1) plus a safety `RatioMargin`
+(default 0.1), which counts after `RatioMinimumHours` of seeding (default 3).
 
 ## How it works
 
@@ -197,9 +198,10 @@ picked.
 The disk budget is measured from the filesystem on every call rather than kept as a running total,
 so a film deleted by hand is accounted for immediately.
 
-A finished download keeps seeding. Retention measures seeding on the client's own clock, which is
-the time the tracker credits, and a film becomes due for removal once it has seeded for the full
-window, never below the tracker's minimum plus the margin. Removing the download is done by
+A finished download keeps seeding until the tracker lets it go: its minimum seeding time or its
+ratio, each with a margin. Retention measures seeding on the client's own clock, which is the time
+the tracker credits, and the ratio as uploaded over downloaded, and a download is due for removal as
+soon as either is met. Removing the download is done by
 MovieBot's hand-off service, which also knows which films are being watched or transcoded.
 
 ## Repository layout

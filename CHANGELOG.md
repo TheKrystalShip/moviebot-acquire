@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.42.0
+
+`Retention` lets a download go as soon as the tracker does: once it has seeded
+`TrackerMinimumHours` plus `MarginHours` (48 and 12), or reached `TrackerRatio` plus `RatioMargin`
+(1 and 0.1) after `RatioMinimumHours` of seeding (3). `RetentionOptions.SeedDays`, `Retention.Window`,
+`Remaining` and `Describe` are gone. `DownloadStatus` carries `UploadedBytes`, `DownloadedBytes` and
+`Ratio`, uploaded over downloaded and null while nothing was downloaded.
+
 ## 0.41.0
 
 `TorrentTags` names why a show's file is fetched: `Keep` (`keep:sXXeYY`, or a bare `keep` for a

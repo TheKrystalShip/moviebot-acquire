@@ -47,7 +47,11 @@ public sealed record QBittorrentTorrent
     /// <summary>Peers with the whole file that the tracker knows of, connected or not.</summary>
     [JsonPropertyName("num_complete")] public int SeedsInSwarm { get; init; }
 
-    [JsonPropertyName("ratio")] public double Ratio { get; init; }
+    /// <summary>Bytes sent to peers, summed over every run.</summary>
+    [JsonPropertyName("uploaded")] public long Uploaded { get; init; }
+
+    /// <summary>Bytes received from peers, summed over every run; zero for data that was already on disk.</summary>
+    [JsonPropertyName("downloaded")] public long Downloaded { get; init; }
 
     /// <summary>
     /// Seconds the client has spent seeding this torrent, summed over every run and kept in its

@@ -93,6 +93,19 @@ public sealed record DownloadStatus
     /// </summary>
     public TimeSpan Seeded { get; init; }
 
+    /// <summary>What the client has sent to peers of this torrent, summed over every run.</summary>
+    public long UploadedBytes { get; init; }
+
+    /// <summary>What the client has received for this torrent, summed over every run.</summary>
+    public long DownloadedBytes { get; init; }
+
+    /// <summary>
+    /// Uploaded over downloaded, as the tracker reckons a ratio; null while nothing has been
+    /// downloaded. The client's own figure divides by the size when nothing was downloaded, which
+    /// is a ratio the tracker never sees.
+    /// </summary>
+    public double? Ratio => DownloadedBytes > 0 ? UploadedBytes / (double)DownloadedBytes : null;
+
     public bool IsFinished => State == DownloadState.Complete;
 
     /// <summary>A short line for a chat surface.</summary>

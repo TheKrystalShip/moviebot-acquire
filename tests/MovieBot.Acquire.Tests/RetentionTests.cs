@@ -5,67 +5,74 @@ using Xunit;
 namespace TheKrystalShip.MovieBot.Acquire.Tests;
 
 /// <summary>
-/// The rule is measured in seeding time and never removes anything under the tracker's minimum.
-/// A wrong answer here is either a film gone early or a penalty on the account, so the edges are
-/// what is checked.
+/// A download goes once it has seeded past the tracker's minimum plus the margin, or reached the
+/// tracker's ratio plus its margin after the least seeding, and never before either. A wrong answer
+/// here is either disk held for nothing or a penalty on the account, so the edges are what is
+/// checked.
 /// </summary>
 public class RetentionTests
 {
-    private static Retention Rule(double seedDays = 7, double minimumHours = 48, double marginHours = 12) =>
-        new(Options.Create(new RetentionOptions
+    private const long GiB = 1L << 30;
+
+    private static Retention Rule(RetentionOptions? options = null) => new(Options.Create(options ?? new RetentionOptions()));
+
+    private static DownloadStatus Download(
+        TimeSpan seeded, long uploaded = 0, long downloaded = 10 * GiB, DownloadState state = DownloadState.Complete) =>
+        new()
         {
-            SeedDays = seedDays, TrackerMinimumHours = minimumHours, MarginHours = marginHours,
-        }));
-
-    private static DownloadStatus Seeded(TimeSpan seeded, DownloadState state = DownloadState.Complete) =>
-        new() { Hash = "abc", Name = "Heat.1995.1080p", State = state, Seeded = seeded };
+            Hash = "abc", Name = "Heat.1995.1080p", State = state, Seeded = seeded,
+            UploadedBytes = uploaded, DownloadedBytes = downloaded,
+        };
 
     [Fact]
-    public void A_week_of_seeding_is_due() =>
-        Assert.True(Rule().IsDue(Seeded(TimeSpan.FromDays(7))));
+    public void The_minimum_plus_the_margin_is_due() =>
+        Assert.True(Rule().IsDue(Download(TimeSpan.FromHours(60))));
 
     [Fact]
-    public void A_moment_short_of_the_window_is_not_due() =>
-        Assert.False(Rule().IsDue(Seeded(TimeSpan.FromDays(7) - TimeSpan.FromSeconds(1))));
+    public void A_moment_short_of_the_floor_is_not_due() =>
+        Assert.False(Rule().IsDue(Download(TimeSpan.FromHours(60) - TimeSpan.FromSeconds(1))));
+
+    [Fact]
+    public void The_tracker_minimum_alone_is_not_enough() =>
+        Assert.False(Rule().IsDue(Download(TimeSpan.FromHours(48))));
 
     [Fact]
     public void Nothing_is_due_while_still_downloading() =>
-        Assert.False(Rule().IsDue(Seeded(TimeSpan.FromDays(30), DownloadState.Downloading)));
+        Assert.False(Rule().IsDue(Download(TimeSpan.FromDays(30), state: DownloadState.Downloading)));
 
     [Fact]
-    public void The_floor_holds_even_when_the_window_is_under_it()
+    public void The_ratio_plus_its_margin_is_due_after_the_least_seeding() =>
+        Assert.True(Rule().IsDue(Download(TimeSpan.FromHours(3), uploaded: 11 * GiB)));
+
+    [Fact]
+    public void The_tracker_ratio_alone_is_not_enough() =>
+        Assert.False(Rule().IsDue(Download(TimeSpan.FromHours(10), uploaded: 10 * GiB)));
+
+    [Fact]
+    public void The_ratio_does_not_count_before_the_least_seeding() =>
+        Assert.False(Rule().IsDue(Download(TimeSpan.FromHours(3) - TimeSpan.FromSeconds(1), uploaded: 30 * GiB)));
+
+    [Fact]
+    public void Nothing_downloaded_has_no_ratio_and_goes_on_time()
     {
-        // The options refuse this combination at startup; the rule refuses it again on its own,
-        // so a process that skipped validation still removes nothing the tracker would penalise.
-        var rule = Rule(seedDays: 1);
+        // Data already on disk is checked rather than downloaded; the client's own ratio for it
+        // divides by the size, and the tracker, which saw no download, never reckons that one.
+        var rule = Rule();
 
-        Assert.False(rule.IsDue(Seeded(TimeSpan.FromHours(30))));
-        Assert.True(rule.IsDue(Seeded(TimeSpan.FromHours(60))));
+        Assert.Null(Download(TimeSpan.Zero, uploaded: 30 * GiB, downloaded: 0).Ratio);
+        Assert.False(rule.IsDue(Download(TimeSpan.FromHours(10), uploaded: 30 * GiB, downloaded: 0)));
+        Assert.True(rule.IsDue(Download(TimeSpan.FromHours(60), uploaded: 0, downloaded: 0)));
     }
-
-    [Fact]
-    public void A_window_under_the_floor_is_incoherent() =>
-        Assert.False(new RetentionOptions { SeedDays = 2, TrackerMinimumHours = 48, MarginHours = 12 }.IsCoherent);
 
     [Fact]
     public void The_defaults_are_coherent() =>
         Assert.True(new RetentionOptions().IsCoherent);
 
     [Fact]
-    public void Remaining_counts_down_to_the_window() =>
-        Assert.Equal(TimeSpan.FromDays(5), Rule().Remaining(Seeded(TimeSpan.FromDays(2))));
+    public void A_ratio_of_zero_is_incoherent() =>
+        Assert.False(new RetentionOptions { TrackerRatio = 0 }.IsCoherent);
 
     [Fact]
-    public void Remaining_never_goes_negative() =>
-        Assert.Equal(TimeSpan.Zero, Rule().Remaining(Seeded(TimeSpan.FromDays(9))));
-
-    [Theory]
-    [InlineData(5.0, "5 days")]
-    [InlineData(4.2, "5 days")]
-    [InlineData(1.0, "1 day")]
-    [InlineData(0.5, "12 hours")]
-    [InlineData(0.06, "2 hours")]
-    [InlineData(0.01, "less than an hour")]
-    public void Remaining_is_described_in_whole_units(double days, string expected) =>
-        Assert.Equal(expected, Retention.Describe(TimeSpan.FromDays(days)));
+    public void A_negative_margin_is_incoherent() =>
+        Assert.False(new RetentionOptions { MarginHours = -1 }.IsCoherent);
 }
