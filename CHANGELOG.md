@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.43.0
+
+`TorrentTags` names why a download is fetched for people's wants: `want:<imdbId>` marks a torrent the
+prefetcher started, so the disk budget and the library clock can tell it from a room's or a follow's.
+
 ## 0.42.0
 
 `Retention` lets a download go as soon as the tracker does: once it has seeded
