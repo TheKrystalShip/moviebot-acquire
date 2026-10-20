@@ -172,4 +172,17 @@ public class TorrentTagsTests
     [Fact]
     public void A_room_waiting_on_an_episode_does_not_keep_it() =>
         Assert.False(TorrentTags.Keeps(TorrentTags.Watch("a1b2c3d4", new EpisodeNumber(2, 4)), new EpisodeNumber(2, 4)));
+
+    [Fact]
+    public void A_want_survives_the_round_trip() =>
+        Assert.Equal("tt0458352", TorrentTags.ReadWant(TorrentTags.Want("tt0458352")));
+
+    [Fact]
+    public void A_want_is_not_read_as_a_film_or_as_a_want_of_nothing()
+    {
+        Assert.Null(TorrentTags.ReadImdb(TorrentTags.Want("tt0458352")));
+        Assert.Null(TorrentTags.ReadWant(TorrentTags.Imdb("tt0458352")));
+        Assert.Null(TorrentTags.ReadWant("want:"));
+        Assert.Null(TorrentTags.ReadWant("want:not-an-id"));
+    }
 }

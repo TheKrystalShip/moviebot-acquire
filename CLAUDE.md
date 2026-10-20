@@ -351,6 +351,9 @@ persists it, so the state of that work is kept on the torrent rather than in any
 - **Why a show's file is fetched is a tag.** `watch:<room>:sXXeYY` is a room waiting on the episode,
   `keep:sXXeYY` any reason that outlasts a room, and `passed:sXXeYY` a room that moved past the
   episode, left for whoever knows whether the file can be let go of.
+- **Fetching because people want a title is a tag.** `want:<imdbId>` marks a download the API started
+  for the wants on a film or show with nobody in front of it; the count of what the prefetcher has
+  arriving and the notice to every wanter read it.
 - **A failure gets its own tag rather than leaving the work tag alone.** Left alone, a failure is
   indistinguishable from work still in progress, and whoever is waiting is told nothing at all.
 - **Tags describe the download, never the film in the library.** A torrent is let go of once its

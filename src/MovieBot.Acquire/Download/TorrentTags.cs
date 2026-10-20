@@ -242,6 +242,23 @@ public static partial class TorrentTags
             : null;
 
     /// <summary>
+    /// The download was started because people want the title to watch, <c>want:tt0458352</c>, with
+    /// nobody sitting in front of it. The film or show it is for follows the colon, so a pass that
+    /// counts what the prefetcher has arriving and a notice that tells every wanter read the same
+    /// fact the wants carry.
+    /// </summary>
+    public const string WantPrefix = "want:";
+
+    public static string Want(string imdbId) => $"{WantPrefix}{imdbId}";
+
+    /// <summary>Reads the title out of a want tag, or null when it is not one.</summary>
+    public static string? ReadWant(string tag) =>
+        tag.StartsWith(WantPrefix, StringComparison.Ordinal)
+        && ImdbId.IsValid(tag[WantPrefix.Length..])
+            ? tag[WantPrefix.Length..]
+            : null;
+
+    /// <summary>
     /// The download still has to be turned into something the player can open. Carried from the
     /// moment it is started and removed only once that work has actually finished, so a download
     /// still wearing it is one whose transcode is owed — whether it has not begun, is running, or
