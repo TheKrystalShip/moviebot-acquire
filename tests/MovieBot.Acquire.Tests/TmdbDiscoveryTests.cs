@@ -365,6 +365,32 @@ public class TmdbDiscoveryTests
     }
 
     [Fact]
+    public async Task A_page_of_a_discovery_reads_its_own_pages_of_the_database_and_says_how_many_pages_there_are()
+    {
+        var asked = new List<string>();
+        var page = string.Join(",", Enumerable.Range(1, 20).Select(i => $$"""{ "id": {{i}}, "title": "Film {{i}}" }"""));
+        var found = await Client(request =>
+        {
+            asked.Add(Decoded(request));
+            return Json($$"""{ "total_pages": 5, "results": [ {{page}} ] }""");
+        }).DiscoverPageAsync(new DiscoverQuery { Kind = "film" }, 2, 40, CancellationToken.None);
+
+        Assert.Equal(["page=3", "page=4"], asked.Select(a => a[a.IndexOf("page=", StringComparison.Ordinal)..]));
+        Assert.Equal(40, found.Titles.Count);
+        Assert.Equal(3, found.Pages);
+    }
+
+    [Fact]
+    public async Task A_page_the_database_answers_short_is_the_last()
+    {
+        var found = await Client(_ => Json("""{ "results": [ { "id": 1, "title": "Only" } ] }"""))
+            .DiscoverPageAsync(new DiscoverQuery { Kind = "film" }, 1, 20, CancellationToken.None);
+
+        Assert.Equal(["Only"], found.Titles.Select(t => t.Title));
+        Assert.Equal(1, found.Pages);
+    }
+
+    [Fact]
     public async Task What_is_similar_is_recommendations_first_then_the_rest_without_the_title_itself()
     {
         var asked = new List<string>();

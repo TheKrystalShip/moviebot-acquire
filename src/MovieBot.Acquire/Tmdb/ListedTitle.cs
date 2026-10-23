@@ -37,6 +37,14 @@ public sealed record ListedTitle
     public double Popularity { get; init; }
 }
 
+/// <summary>One page of a list the database answers in pages, and how many pages the list has at that page's size.</summary>
+public sealed record ListedPage
+{
+    public IReadOnlyList<ListedTitle> Titles { get; init; } = [];
+
+    public int Pages { get; init; }
+}
+
 /// <summary>
 /// What names a title beyond a list's entry: its IMDb id, which everything else here leads by, the
 /// genres it is filed under, who made it and who stars in it. One call to the database per title.

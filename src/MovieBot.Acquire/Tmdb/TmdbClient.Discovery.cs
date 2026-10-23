@@ -102,28 +102,43 @@ public sealed partial class TmdbClient
         // The database orders by a plain average, which puts a title a few hundred people rated above
         // the ones everybody has seen. A sort by rating reads the most voted titles instead and
         // orders them here by a rating weighted by their votes.
-        var byRating = query.Sort == DiscoverSorts.Rating;
-        var wanted = byRating ? RatingPoolPages * PageSize : count;
+        if (query.Sort != DiscoverSorts.Rating) return (await DiscoverPageAsync(query, 1, count, ct)).Titles;
+
         var parameters = Parameters(query, settings.Language, settings.Region);
         var found = new List<ListedTitle>();
-        for (var page = 1; found.Count < wanted && page <= (wanted + PageSize - 1) / PageSize; page++)
+        for (var page = 1; page <= RatingPoolPages; page++)
         {
             var answer = await GetAsync($"discover/{space}?{parameters}&page={page}", TmdbJsonContext.Default.TmdbTitlePage, ct);
             var results = answer?.Results ?? [];
             found.AddRange(results.Select(r => Listed(r, query.Kind)).OfType<ListedTitle>());
             if (results.Count < PageSize) break;
         }
-        return (byRating ? WeightedRating.Order(found) : found).Take(count).ToList();
+        return WeightedRating.Order(found).Take(count).ToList();
     }
 
     /// <summary>
-    /// One of the database's own lists, at most <paramref name="count"/>, in its order. Throws
-    /// <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// One page of a discovery in the database's own order: the <paramref name="page"/>th run of
+    /// <paramref name="count"/> titles, rounded up to whole pages of the database's, with how many such
+    /// pages the discovery has. A sort by rating is not reordered here; <see cref="DiscoverAsync"/> ranks
+    /// it. Throws <see cref="HttpRequestException"/> when the database cannot be reached.
     /// </summary>
-    public async Task<IReadOnlyList<ListedTitle>> ChartAsync(TitleChart chart, int count, CancellationToken ct)
+    public async Task<ListedPage> DiscoverPageAsync(DiscoverQuery query, int page, int count, CancellationToken ct)
     {
         var settings = options.Value;
-        if (!settings.IsConfigured || count <= 0) return [];
+        if (!settings.IsConfigured || Space(query.Kind) is not { } space || page < 1 || count <= 0) return new ListedPage();
+
+        var parameters = Parameters(query, settings.Language, settings.Region);
+        return await PageOfAsync(at => $"discover/{space}?{parameters}&page={at}", query.Kind, page, count, null, ct);
+    }
+
+    /// <summary>
+    /// A page of one of the database's own lists, as <see cref="DiscoverPageAsync"/> pages a discovery.
+    /// Throws <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<ListedPage> ChartPageAsync(TitleChart chart, int page, int count, CancellationToken ct)
+    {
+        var settings = options.Value;
+        if (!settings.IsConfigured || page < 1 || count <= 0) return new ListedPage();
 
         var language = Uri.EscapeDataString(settings.Language);
         var (path, kind) = chart switch
@@ -132,16 +147,38 @@ public sealed partial class TmdbClient
             TitleChart.ShowsTrendingToday => ($"trending/tv/day?language={language}", "show"),
             _ => ($"movie/now_playing?language={language}&region={Uri.EscapeDataString(settings.Region)}", "film"),
         };
+        return await PageOfAsync(at => $"{path}&page={at}", kind, page, count,
+            t => kind == "film" || !t.GenreIds.Any(UnscriptedShowGenres.Contains), ct);
+    }
+
+    /// <summary>One of the database's own lists, at most <paramref name="count"/>, in its order. Throws <see cref="HttpRequestException"/> when the database cannot be reached.</summary>
+    public async Task<IReadOnlyList<ListedTitle>> ChartAsync(TitleChart chart, int count, CancellationToken ct) =>
+        (await ChartPageAsync(chart, 1, count, ct)).Titles;
+
+    /// <summary>
+    /// The <paramref name="page"/>th run of whole database pages that holds <paramref name="count"/>
+    /// titles, read from the path <paramref name="at"/> gives for each of the database's pages.
+    /// </summary>
+    private async Task<ListedPage> PageOfAsync(Func<int, string> at, string kind, int page, int count, Func<ListedTitle, bool>? keep, CancellationToken ct)
+    {
+        var perPage = (count + PageSize - 1) / PageSize;
+        var first = (page - 1) * perPage + 1;
         var found = new List<ListedTitle>();
-        for (var page = 1; found.Count < count && page <= (count + PageSize - 1) / PageSize; page++)
+        var total = 0;
+        var exhausted = false;
+        for (var number = first; number < first + perPage; number++)
         {
-            var answer = await GetAsync($"{path}&page={page}", TmdbJsonContext.Default.TmdbTitlePage, ct);
+            var answer = await GetAsync(at(number), TmdbJsonContext.Default.TmdbTitlePage, ct);
             var results = answer?.Results ?? [];
-            found.AddRange(results.Select(r => Listed(r, kind)).OfType<ListedTitle>()
-                .Where(t => kind == "film" || !t.GenreIds.Any(UnscriptedShowGenres.Contains)));
-            if (results.Count < PageSize) break;
+            total = answer?.TotalPages ?? 0;
+            found.AddRange(results.Select(r => Listed(r, kind)).OfType<ListedTitle>().Where(t => keep?.Invoke(t) ?? true));
+            if (results.Count < PageSize) { exhausted = true; break; }
         }
-        return found.Take(count).ToList();
+
+        // The database says how many pages it has; an answer without the count is read as ending
+        // at the first short page.
+        var pages = total > 0 ? (total + perPage - 1) / perPage : exhausted ? page : page + 1;
+        return new ListedPage { Titles = found.Take(count).ToList(), Pages = Math.Max(page, pages) };
     }
 
     /// <summary>
@@ -411,6 +448,9 @@ public sealed partial class TmdbClient
 
     /// <summary>How many pages of the most voted titles a sort by rating reads and orders.</summary>
     private const int RatingPoolPages = 5;
+
+    /// <summary>How many titles a sort by rating ranks: the most voted of the discovery.</summary>
+    public const int RatingPoolSize = RatingPoolPages * PageSize;
 
     private static string Iso(DateOnly day) => day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 

@@ -118,6 +118,7 @@ public sealed record TmdbFound
 public sealed record TmdbTitlePage
 {
     [JsonPropertyName("results")] public IReadOnlyList<TmdbListedTitle>? Results { get; init; }
+    [JsonPropertyName("total_pages")] public int TotalPages { get; init; }
 }
 
 /// <summary>
