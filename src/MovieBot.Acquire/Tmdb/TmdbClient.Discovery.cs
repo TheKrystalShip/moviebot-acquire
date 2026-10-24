@@ -278,6 +278,7 @@ public sealed partial class TmdbClient
             if (KindOf(part.MediaType) is not { } kind || part.Adult == true) continue;
             var entry = Entry(part, kind);
             entry.AddRole(part.Character);
+            if (part.EpisodeCount is > 0) entry.Episodes = Math.Max(entry.Episodes ?? 0, part.EpisodeCount.Value);
             if (IsAppearance(part)) entry.Appeared = true;
             else entry.Acting = true;
         }
@@ -482,6 +483,7 @@ public sealed partial class TmdbClient
 
         public TmdbListedTitle Title { get; } = title;
         public bool Acting { get; set; }
+        public int? Episodes { get; set; }
         public bool Appeared { get; set; }
         public bool Crew { get; set; }
         public bool Directing { get; set; }
@@ -501,6 +503,7 @@ public sealed partial class TmdbClient
             Released = Day(Title.ReleaseDate ?? Title.FirstAirDate),
             Role = _roles.Count > 0 ? string.Join(" · ", _roles) : null,
             Acting = Acting,
+            Episodes = kind == "show" ? Episodes : null,
             Directing = Directing,
             Writing = Writing,
             Appearance = Appeared && !Acting && !Crew,

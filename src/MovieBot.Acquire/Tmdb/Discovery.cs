@@ -36,6 +36,9 @@ public sealed record FilmCredit
 
     public bool Acting { get; init; }
 
+    /// <summary>The most episodes of a show the person played in across their parts on it; null for a film or when the database says nothing.</summary>
+    public int? Episodes { get; init; }
+
     public bool Directing { get; init; }
 
     public bool Writing { get; init; }

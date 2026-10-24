@@ -429,11 +429,13 @@ public class TmdbDiscoveryTests
             "cast": [
               { "id": 1, "media_type": "movie", "title": "Played And Directed", "release_date": "2014-12-26", "vote_count": 1500, "vote_average": 6.84, "character": "Joshua" },
               { "id": 2, "media_type": "movie", "title": "A Documentary", "release_date": "2010-01-01", "vote_count": 30, "character": "Self - Interviewee" },
-              { "id": 3, "media_type": "tv", "name": "A Late Show", "genre_ids": [35, 10767], "first_air_date": "2020-01-01", "character": "" },
+              { "id": 3, "media_type": "tv", "name": "A Late Show", "genre_ids": [35, 10767], "first_air_date": "2020-01-01", "character": "", "episode_count": 40 },
               { "id": 4, "media_type": "movie", "title": "Announced", "vote_count": 0, "character": "Lead" },
               { "id": 5, "media_type": "movie", "title": "Grown-up", "adult": true, "character": "X" },
               { "id": 6, "media_type": "person", "name": "Someone", "character": "X" },
-              { "id": 7, "media_type": "tv", "name": "Himself Only", "first_air_date": "2021-01-01", "character": "Himself" }
+              { "id": 7, "media_type": "tv", "name": "Himself Only", "first_air_date": "2021-01-01", "character": "Himself" },
+              { "id": 9, "media_type": "tv", "name": "Recurring", "first_air_date": "2022-01-01", "character": "Odin", "episode_count": 2 },
+              { "id": 9, "media_type": "tv", "name": "Recurring", "first_air_date": "2022-01-01", "character": "Young Odin", "episode_count": 5 }
             ],
             "crew": [
               { "id": 1, "media_type": "movie", "title": "Played And Directed", "release_date": "2014-12-26", "job": "Director", "department": "Directing" },
@@ -451,7 +453,7 @@ public class TmdbDiscoveryTests
         var person = await Client(_ => Json(Pat)).FilmographyAsync(934, CancellationToken.None);
 
         Assert.Equal(("Pat Test", "Acting", "/pat.jpg"), (person!.Name, person.KnownFor, person.ProfilePath));
-        Assert.Equal(["Played And Directed", "A Documentary", "A Late Show", "Announced", "Himself Only", "Only Produced"],
+        Assert.Equal(["Played And Directed", "A Documentary", "A Late Show", "Announced", "Himself Only", "Recurring", "Only Produced"],
             person.Credits.Select(c => c.Title));
 
         var both = person.Credits.Single(c => c.TmdbId == 1);
@@ -476,6 +478,17 @@ public class TmdbDiscoveryTests
         Assert.Null(announced.Released);
         Assert.False(person.Credits.Single(c => c.Title == "Only Produced").Acting);
         Assert.DoesNotContain(person.Credits, c => c.Title is "Grown-up" or "Someone");
+    }
+
+    [Fact]
+    public async Task A_filmography_counts_the_episodes_of_a_show_across_the_parts_played_on_it()
+    {
+        var person = await Client(_ => Json(Pat)).FilmographyAsync(934, CancellationToken.None);
+
+        Assert.Equal(5, person!.Credits.Single(c => c.Title == "Recurring").Episodes);
+        Assert.Equal("Odin · Young Odin", person.Credits.Single(c => c.Title == "Recurring").Role);
+        Assert.Null(person.Credits.Single(c => c.Title == "Himself Only").Episodes);
+        Assert.Null(person.Credits.Single(c => c.Title == "Played And Directed").Episodes);
     }
 
     [Fact]

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.46.0
+
+A `FilmCredit` carries `Episodes`: the most episodes of a show the person played in across their parts
+on it, null for a film or when the database says nothing.
+
 ## 0.45.0
 
 A description's trailers are the official ones alone, and no longer say whether they are official. A

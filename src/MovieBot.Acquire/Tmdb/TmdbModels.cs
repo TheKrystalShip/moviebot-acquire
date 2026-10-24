@@ -146,6 +146,7 @@ public sealed record TmdbListedTitle
     [JsonPropertyName("genre_ids")] public IReadOnlyList<int>? GenreIds { get; init; }
     [JsonPropertyName("media_type")] public string? MediaType { get; init; }
     [JsonPropertyName("character")] public string? Character { get; init; }
+    [JsonPropertyName("episode_count")] public int? EpisodeCount { get; init; }
     [JsonPropertyName("job")] public string? Job { get; init; }
     [JsonPropertyName("department")] public string? Department { get; init; }
     [JsonPropertyName("original_language")] public string? OriginalLanguage { get; init; }
