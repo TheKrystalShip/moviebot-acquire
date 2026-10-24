@@ -87,7 +87,7 @@ public sealed partial class TmdbClient
         var settings = options.Value;
         if (!settings.IsConfigured || Space(kind) is not { } space) return [];
 
-        var region = settings.Region.ToUpperInvariant();
+        var region = settings.StreamingRegion.ToUpperInvariant();
         var answer = await GetAsync(
             $"watch/providers/{space}?watch_region={Uri.EscapeDataString(region)}&language={Uri.EscapeDataString(settings.Language)}",
             TmdbJsonContext.Default.TmdbProviderList, ct);
