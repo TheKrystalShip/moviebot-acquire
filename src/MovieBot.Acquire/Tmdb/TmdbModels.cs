@@ -39,6 +39,11 @@ public sealed record TmdbTv
     [JsonPropertyName("content_ratings")] public TmdbContentRatings? ContentRatings { get; init; }
     [JsonPropertyName("external_ids")] public TmdbExternalIds? ExternalIds { get; init; }
     [JsonPropertyName("keywords")] public TmdbKeywords? Keywords { get; init; }
+    [JsonPropertyName("videos")] public TmdbVideos? Videos { get; init; }
+    [JsonPropertyName("recommendations")] public TmdbTitlePage? Recommendations { get; init; }
+    [JsonPropertyName("reviews")] public TmdbReviews? Reviews { get; init; }
+    [JsonPropertyName("images")] public TmdbImages? Images { get; init; }
+    [JsonPropertyName("watch/providers")] public TmdbWatchProviders? WatchProviders { get; init; }
 }
 
 /// <summary>A title's keywords: a film lists them under <c>keywords</c>, a show under <c>results</c>.</summary>
@@ -231,6 +236,99 @@ public sealed record TmdbMovie
     [JsonPropertyName("release_dates")] public TmdbReleaseDates? ReleaseDates { get; init; }
     [JsonPropertyName("keywords")] public TmdbKeywords? Keywords { get; init; }
     [JsonPropertyName("status")] public string? Status { get; init; }
+    [JsonPropertyName("budget")] public long? Budget { get; init; }
+    [JsonPropertyName("revenue")] public long? Revenue { get; init; }
+    [JsonPropertyName("videos")] public TmdbVideos? Videos { get; init; }
+    [JsonPropertyName("recommendations")] public TmdbTitlePage? Recommendations { get; init; }
+    [JsonPropertyName("reviews")] public TmdbReviews? Reviews { get; init; }
+    [JsonPropertyName("images")] public TmdbImages? Images { get; init; }
+    [JsonPropertyName("watch/providers")] public TmdbWatchProviders? WatchProviders { get; init; }
+}
+
+public sealed record TmdbVideos
+{
+    [JsonPropertyName("results")] public IReadOnlyList<TmdbVideo>? Results { get; init; }
+}
+
+public sealed record TmdbVideo
+{
+    [JsonPropertyName("key")] public string? Key { get; init; }
+    [JsonPropertyName("name")] public string? Name { get; init; }
+    [JsonPropertyName("site")] public string? Site { get; init; }
+    [JsonPropertyName("type")] public string? Type { get; init; }
+    [JsonPropertyName("official")] public bool? Official { get; init; }
+    [JsonPropertyName("iso_639_1")] public string? Language { get; init; }
+    [JsonPropertyName("published_at")] public string? PublishedAt { get; init; }
+}
+
+public sealed record TmdbReviews
+{
+    [JsonPropertyName("results")] public IReadOnlyList<TmdbReview>? Results { get; init; }
+    [JsonPropertyName("total_results")] public int? TotalResults { get; init; }
+}
+
+public sealed record TmdbReview
+{
+    [JsonPropertyName("author")] public string? Author { get; init; }
+    [JsonPropertyName("content")] public string? Content { get; init; }
+    [JsonPropertyName("url")] public string? Url { get; init; }
+    [JsonPropertyName("author_details")] public TmdbReviewer? AuthorDetails { get; init; }
+}
+
+public sealed record TmdbReviewer
+{
+    [JsonPropertyName("rating")] public double? Rating { get; init; }
+}
+
+public sealed record TmdbImages
+{
+    [JsonPropertyName("logos")] public IReadOnlyList<TmdbImage>? Logos { get; init; }
+}
+
+public sealed record TmdbImage
+{
+    [JsonPropertyName("file_path")] public string? FilePath { get; init; }
+    [JsonPropertyName("iso_639_1")] public string? Language { get; init; }
+    [JsonPropertyName("vote_average")] public double? VoteAverage { get; init; }
+    [JsonPropertyName("width")] public int? Width { get; init; }
+}
+
+/// <summary>Where a title streams, rents and sells, by region code.</summary>
+public sealed record TmdbWatchProviders
+{
+    [JsonPropertyName("results")] public Dictionary<string, TmdbRegionProviders>? Results { get; init; }
+}
+
+public sealed record TmdbRegionProviders
+{
+    [JsonPropertyName("link")] public string? Link { get; init; }
+    [JsonPropertyName("flatrate")] public IReadOnlyList<TmdbProvider>? Flatrate { get; init; }
+    [JsonPropertyName("rent")] public IReadOnlyList<TmdbProvider>? Rent { get; init; }
+    [JsonPropertyName("buy")] public IReadOnlyList<TmdbProvider>? Buy { get; init; }
+    [JsonPropertyName("free")] public IReadOnlyList<TmdbProvider>? Free { get; init; }
+    [JsonPropertyName("ads")] public IReadOnlyList<TmdbProvider>? Ads { get; init; }
+}
+
+public sealed record TmdbProvider
+{
+    [JsonPropertyName("provider_id")] public int Id { get; init; }
+    [JsonPropertyName("provider_name")] public string? Name { get; init; }
+    [JsonPropertyName("logo_path")] public string? LogoPath { get; init; }
+    [JsonPropertyName("display_priority")] public int? Priority { get; init; }
+}
+
+/// <summary>The providers the database lists for a region, with how it orders them there.</summary>
+public sealed record TmdbProviderList
+{
+    [JsonPropertyName("results")] public IReadOnlyList<TmdbListedProvider>? Results { get; init; }
+}
+
+public sealed record TmdbListedProvider
+{
+    [JsonPropertyName("provider_id")] public int Id { get; init; }
+    [JsonPropertyName("provider_name")] public string? Name { get; init; }
+    [JsonPropertyName("logo_path")] public string? LogoPath { get; init; }
+    [JsonPropertyName("display_priorities")] public Dictionary<string, int>? Priorities { get; init; }
 }
 
 /// <summary>A genre, a network or a person by name; <c>id</c> is the database's where it gives one.</summary>
@@ -299,5 +397,6 @@ public sealed record TmdbRelease
 [JsonSerializable(typeof(TmdbGenreList))]
 [JsonSerializable(typeof(TmdbPersonPage))]
 [JsonSerializable(typeof(TmdbNamedPage))]
+[JsonSerializable(typeof(TmdbProviderList))]
 [JsonSerializable(typeof(List<TmdbConfigLanguage>))]
 public partial class TmdbJsonContext : JsonSerializerContext;

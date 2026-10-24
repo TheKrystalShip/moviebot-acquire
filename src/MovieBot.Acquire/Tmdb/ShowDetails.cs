@@ -76,6 +76,33 @@ public sealed record ShowDetails
     public string? PosterPath { get; init; }
 
     public string? BackdropPath { get; init; }
+
+    /// <summary>
+    /// The keywords with the ids a discovery filters on. Null in a description kept before the
+    /// database was asked for them.
+    /// </summary>
+    public IReadOnlyList<KeywordTag>? KeywordTags { get; init; }
+
+    /// <summary>
+    /// The trailers and teasers on YouTube, the best first, at most <see cref="TmdbClient.TrailersKept"/>.
+    /// Null in a description kept before the database was asked for them; empty when it names none.
+    /// </summary>
+    public IReadOnlyList<Trailer>? Trailers { get; init; }
+
+    /// <summary>Where it can be watched in the configured region; null when the database lists nothing there.</summary>
+    public WatchProviders? Providers { get; init; }
+
+    /// <summary>The database's first page of recommendations, in its order.</summary>
+    public IReadOnlyList<ListedTitle> Recommendations { get; init; } = [];
+
+    /// <summary>The first reviews the database holds, at most <see cref="TmdbClient.ReviewsKept"/>.</summary>
+    public IReadOnlyList<Review> Reviews { get; init; } = [];
+
+    /// <summary>How many reviews the database holds.</summary>
+    public int ReviewCount { get; init; }
+
+    /// <summary>The title set as a logo, a transparent PNG's path in the database's image store; null when it has none.</summary>
+    public string? LogoPath { get; init; }
 }
 
 /// <summary>An episode as the show's own description names it: where it falls and when it airs.</summary>

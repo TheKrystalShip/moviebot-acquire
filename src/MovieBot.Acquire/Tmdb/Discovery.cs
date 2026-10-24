@@ -179,6 +179,15 @@ public sealed record DiscoverQuery
     /// <summary>The networks a show is on, at least one of them. Shows only.</summary>
     public IReadOnlyList<int> NetworkIds { get; init; } = [];
 
+    /// <summary>
+    /// The services a title streams on, at least one of them: with a subscription, free, or free with
+    /// advertising, and never only for rent or sale. Named with <see cref="WatchRegion"/>.
+    /// </summary>
+    public IReadOnlyList<int> WatchProviderIds { get; init; } = [];
+
+    /// <summary>The region <see cref="WatchProviderIds"/> are asked in, an ISO 3166-1 code; the database's configured region when null.</summary>
+    public string? WatchRegion { get; init; }
+
     /// <summary>The shortest a film runs, in minutes; for a show, an episode.</summary>
     public int? MinRuntime { get; init; }
 

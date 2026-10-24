@@ -28,6 +28,35 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
         "Screenplay", "Writer", "Story", "Novel", "Characters", "Author",
     };
 
+    /// <summary>The most trailers a description keeps.</summary>
+    public const int TrailersKept = 6;
+
+    /// <summary>The most reviews a description keeps, each cut to <see cref="ExcerptLength"/> characters.</summary>
+    public const int ReviewsKept = 3;
+
+    /// <summary>How long a review's excerpt may be.</summary>
+    public const int ExcerptLength = 400;
+
+    /// <summary>The most recommendations a description keeps: the database's first page.</summary>
+    public const int RecommendationsKept = 20;
+
+    /// <summary>What a description asks for beside the title's own facts, in the same call.</summary>
+    private const string Extras = "videos,recommendations,reviews,images,watch/providers";
+
+    /// <summary>The languages the videos and logos of a description are asked in: the configured one, English, and none (speechless, textless).</summary>
+    private static string ExtraLanguages(TmdbOptions settings)
+    {
+        var languages = new List<string> { LanguageCode(settings) };
+        if (!languages.Contains("en")) languages.Add("en");
+        languages.Add("null");
+        var joined = Uri.EscapeDataString(string.Join(',', languages));
+        return $"&include_video_language={joined}&include_image_language={joined}";
+    }
+
+    /// <summary>The ISO 639-1 part of the configured language (<c>en</c> of <c>en-US</c>).</summary>
+    private static string LanguageCode(TmdbOptions settings) =>
+        settings.Language.Split('-', '_')[0].ToLowerInvariant();
+
     public bool IsConfigured => options.Value.IsConfigured;
 
     /// <summary>
@@ -50,7 +79,8 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
         }
 
         var movie = await GetAsync(
-            $"movie/{results[0].Id}?append_to_response=credits,release_dates,keywords&language={Uri.EscapeDataString(settings.Language)}",
+            $"movie/{results[0].Id}?append_to_response=credits,release_dates,keywords,{Extras}&language={Uri.EscapeDataString(settings.Language)}"
+            + ExtraLanguages(settings),
             TmdbJsonContext.Default.TmdbMovie, ct);
         return movie is null ? null : Read(movie, tag, settings);
     }
@@ -105,7 +135,8 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
         }
 
         var tv = await GetAsync(
-            $"tv/{results[0].Id}?append_to_response=aggregate_credits,content_ratings,keywords&language={Uri.EscapeDataString(settings.Language)}",
+            $"tv/{results[0].Id}?append_to_response=aggregate_credits,content_ratings,keywords,{Extras}&language={Uri.EscapeDataString(settings.Language)}"
+            + ExtraLanguages(settings),
             TmdbJsonContext.Default.TmdbTv, ct);
         return tv is null ? null : ReadShow(tv, tag, settings);
     }
@@ -414,6 +445,13 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
             LastEpisodeToAir = Airing(tv.LastEpisodeToAir),
             PosterPath = Image(tv.PosterPath),
             BackdropPath = Image(tv.BackdropPath),
+            KeywordTags = Tags(tv.Keywords),
+            Trailers = Trailers(tv.Videos, settings),
+            Providers = ProvidersIn(tv.WatchProviders, settings.Region),
+            Recommendations = Recommended(tv.Recommendations, "show", tv.Id),
+            Reviews = ReviewsOf(tv.Reviews),
+            ReviewCount = tv.Reviews?.TotalResults ?? 0,
+            LogoPath = LogoOf(tv.Images, settings),
         };
     }
 
@@ -514,8 +552,125 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
             Countries = Names(movie.ProductionCountries?.Select(c => c.Name)),
             PosterPath = Image(movie.PosterPath),
             BackdropPath = Image(movie.BackdropPath),
+            KeywordTags = Tags(movie.Keywords),
+            Trailers = Trailers(movie.Videos, settings),
+            Providers = ProvidersIn(movie.WatchProviders, settings.Region),
+            Recommendations = Recommended(movie.Recommendations, "film", movie.Id),
+            Reviews = ReviewsOf(movie.Reviews),
+            ReviewCount = movie.Reviews?.TotalResults ?? 0,
+            LogoPath = LogoOf(movie.Images, settings),
+            Budget = movie.Budget is > 0 ? movie.Budget : null,
+            Revenue = movie.Revenue is > 0 ? movie.Revenue : null,
         };
     }
+
+    /// <summary>
+    /// The YouTube trailers and teasers, official before unofficial, a trailer before a teaser, the
+    /// configured language before the others, and the earliest published first among equals.
+    /// </summary>
+    private static List<Trailer> Trailers(TmdbVideos? videos, TmdbOptions settings)
+    {
+        var language = LanguageCode(settings);
+        return (videos?.Results ?? [])
+            .Where(v => v.Site == "YouTube" && v.Type is "Trailer" or "Teaser" && !string.IsNullOrWhiteSpace(v.Key) && !string.IsNullOrWhiteSpace(v.Name))
+            .OrderByDescending(v => v.Official == true)
+            .ThenBy(v => v.Type == "Trailer" ? 0 : 1)
+            .ThenBy(v => v.Language == language ? 0 : 1)
+            .ThenBy(v => v.PublishedAt ?? "", StringComparer.Ordinal)
+            .Take(TrailersKept)
+            .Select(v => new Trailer
+            {
+                Key = v.Key!.Trim(),
+                Name = v.Name!.Trim(),
+                Kind = v.Type!,
+                Official = v.Official == true,
+                Language = string.IsNullOrEmpty(v.Language) ? null : v.Language,
+            })
+            .ToList();
+    }
+
+    /// <summary>Where a title is watched in <paramref name="region"/>, each way ordered as the database orders the providers there; null when the database lists nothing for it.</summary>
+    private static WatchProviders? ProvidersIn(TmdbWatchProviders? providers, string region)
+    {
+        if (providers?.Results is not { } regions
+            || regions.FirstOrDefault(r => string.Equals(r.Key, region, StringComparison.OrdinalIgnoreCase)) is not { Value: { } found }) return null;
+
+        static List<WatchProvider> Of(IReadOnlyList<TmdbProvider>? list) =>
+            (list ?? [])
+                .Where(p => p.Id > 0 && !string.IsNullOrWhiteSpace(p.Name))
+                .OrderBy(p => p.Priority ?? int.MaxValue)
+                .DistinctBy(p => p.Id)
+                .Select(p => new WatchProvider { ProviderId = p.Id, Name = p.Name!.Trim(), LogoPath = string.IsNullOrEmpty(p.LogoPath) ? null : p.LogoPath })
+                .ToList();
+
+        var result = new WatchProviders
+        {
+            Region = region.ToUpperInvariant(),
+            Link = string.IsNullOrWhiteSpace(found.Link) ? null : found.Link,
+            Flatrate = Of(found.Flatrate),
+            Rent = Of(found.Rent),
+            Buy = Of(found.Buy),
+            Free = Of(found.Free),
+            Ads = Of(found.Ads),
+        };
+        return result.All.Any() ? result : null;
+    }
+
+    /// <summary>The database's first page of recommendations, without the title itself.</summary>
+    private static List<ListedTitle> Recommended(TmdbTitlePage? page, string kind, int self) =>
+        (page?.Results ?? [])
+            .Select(r => Listed(r, kind))
+            .OfType<ListedTitle>()
+            .Where(t => t.TmdbId != self)
+            .DistinctBy(t => t.TmdbId)
+            .Take(RecommendationsKept)
+            .ToList();
+
+    /// <summary>The first reviews with text, each cut to its beginning on a word.</summary>
+    private static List<Review> ReviewsOf(TmdbReviews? reviews) =>
+        (reviews?.Results ?? [])
+            .Where(r => !string.IsNullOrWhiteSpace(r.Content))
+            .Take(ReviewsKept)
+            .Select(r => new Review
+            {
+                Author = string.IsNullOrWhiteSpace(r.Author) ? "Anonymous" : r.Author.Trim(),
+                Rating = r.AuthorDetails?.Rating is > 0 and var rating ? rating : null,
+                Excerpt = Excerpt(r.Content!),
+                Url = string.IsNullOrWhiteSpace(r.Url) ? null : r.Url,
+            })
+            .ToList();
+
+    private static string Excerpt(string text)
+    {
+        var line = string.Join(' ', text.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        if (line.Length <= ExcerptLength) return line;
+        var cut = line.LastIndexOf(' ', ExcerptLength - 1);
+        return line[..(cut > ExcerptLength / 2 ? cut : ExcerptLength)].TrimEnd(',', ';', ':', '.', ' ') + "…";
+    }
+
+    /// <summary>
+    /// The title's logo: a PNG in the configured language, else English, else with no text at all,
+    /// the best voted and widest among those.
+    /// </summary>
+    private static string? LogoOf(TmdbImages? images, TmdbOptions settings)
+    {
+        var language = LanguageCode(settings);
+        int Rank(TmdbImage logo) => logo.Language == language ? 0 : logo.Language == "en" ? 1 : string.IsNullOrEmpty(logo.Language) ? 2 : 3;
+        return (images?.Logos ?? [])
+            .Where(l => l.FilePath is { } path && path.EndsWith(".png", StringComparison.OrdinalIgnoreCase) && Rank(l) < 3)
+            .OrderBy(Rank)
+            .ThenByDescending(l => l.VoteAverage ?? 0)
+            .ThenByDescending(l => l.Width ?? 0)
+            .FirstOrDefault()?.FilePath;
+    }
+
+    /// <summary>A title's keywords by id and name.</summary>
+    private static List<KeywordTag> Tags(TmdbKeywords? keywords) =>
+        ((keywords?.Keywords ?? keywords?.Results) ?? [])
+            .Where(k => k.Id > 0 && !string.IsNullOrWhiteSpace(k.Name))
+            .DistinctBy(k => k.Id)
+            .Select(k => new KeywordTag { Id = k.Id, Name = k.Name!.Trim() })
+            .ToList();
 
     /// <summary>
     /// The certificate in one country. A theatrical release's certificate is preferred, because a

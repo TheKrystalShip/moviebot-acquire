@@ -72,6 +72,39 @@ public sealed record FilmDetails
 
     /// <summary>A still from the film, wide, for behind a heading; a path like the poster's.</summary>
     public string? BackdropPath { get; init; }
+
+    /// <summary>
+    /// The keywords with the ids a discovery filters on. Null in a description kept before the
+    /// database was asked for them.
+    /// </summary>
+    public IReadOnlyList<KeywordTag>? KeywordTags { get; init; }
+
+    /// <summary>
+    /// The trailers and teasers on YouTube, the best first, at most <see cref="TmdbClient.TrailersKept"/>.
+    /// Null in a description kept before the database was asked for them; empty when it names none.
+    /// </summary>
+    public IReadOnlyList<Trailer>? Trailers { get; init; }
+
+    /// <summary>Where it can be watched in the configured region; null when the database lists nothing there.</summary>
+    public WatchProviders? Providers { get; init; }
+
+    /// <summary>The database's first page of recommendations, in its order.</summary>
+    public IReadOnlyList<ListedTitle> Recommendations { get; init; } = [];
+
+    /// <summary>The first reviews the database holds, at most <see cref="TmdbClient.ReviewsKept"/>.</summary>
+    public IReadOnlyList<Review> Reviews { get; init; } = [];
+
+    /// <summary>How many reviews the database holds.</summary>
+    public int ReviewCount { get; init; }
+
+    /// <summary>The title set as a logo, a transparent PNG's path in the database's image store; null when it has none.</summary>
+    public string? LogoPath { get; init; }
+
+    /// <summary>What the film cost to make, in US dollars; null when the database does not know.</summary>
+    public long? Budget { get; init; }
+
+    /// <summary>What the film took, in US dollars; null when the database does not know.</summary>
+    public long? Revenue { get; init; }
 }
 
 public sealed record CastMember
