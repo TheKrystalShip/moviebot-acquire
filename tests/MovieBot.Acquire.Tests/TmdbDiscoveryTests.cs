@@ -129,6 +129,16 @@ public class TmdbDiscoveryTests
     }
 
     [Fact]
+    public async Task Companies_are_read_in_the_order_the_database_lists_them()
+    {
+        var companies = await Client(request => request.RequestUri!.AbsolutePath == "/3/search/company"
+            ? Json("""{ "results": [ { "id": 68884, "name": "Blumhouse Television" }, { "id": 3172, "name": " Blumhouse Productions " }, { "id": 0, "name": "zero" }, { "id": 9, "name": "" } ] }""")
+            : Json("{}", HttpStatusCode.NotFound)).SearchCompaniesAsync("blumhouse", CancellationToken.None);
+
+        Assert.Equal([(68884, "Blumhouse Television"), (3172, "Blumhouse Productions")], companies.Select(c => (c.Id, c.Name)));
+    }
+
+    [Fact]
     public async Task A_discovery_of_films_asks_with_every_filter_in_a_fixed_order()
     {
         string? asked = null;

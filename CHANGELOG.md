@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.47.0
+
+`SearchCompaniesAsync` finds the database's production companies by name, as `CompanyMatch`es in the
+database's own order.
+
 ## 0.46.0
 
 A `FilmCredit` carries `Episodes`: the most episodes of a show the person played in across their parts

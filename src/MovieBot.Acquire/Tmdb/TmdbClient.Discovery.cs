@@ -77,6 +77,23 @@ public sealed partial class TmdbClient
             .ToList();
     }
 
+    /// <summary>
+    /// The database's production companies matching some words, in its own order: a studio is listed
+    /// once per company it files under (<c>Blumhouse Productions</c>, <c>Blumhouse Television</c>).
+    /// Throws <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// </summary>
+    public async Task<IReadOnlyList<CompanyMatch>> SearchCompaniesAsync(string query, CancellationToken ct)
+    {
+        if (!options.Value.IsConfigured || string.IsNullOrWhiteSpace(query)) return [];
+
+        var answer = await GetAsync($"search/company?query={Uri.EscapeDataString(query.Trim())}",
+            TmdbJsonContext.Default.TmdbNamedPage, ct);
+        return (answer?.Results ?? [])
+            .Where(c => c.Id > 0 && !string.IsNullOrWhiteSpace(c.Name))
+            .Select(c => new CompanyMatch { Id = c.Id, Name = c.Name!.Trim() })
+            .ToList();
+    }
+
     /// <summary>The languages the database names, by code and English name. Throws <see cref="HttpRequestException"/> when the database cannot be reached.</summary>
     public async Task<IReadOnlyList<LanguageName>> LanguagesAsync(CancellationToken ct)
     {

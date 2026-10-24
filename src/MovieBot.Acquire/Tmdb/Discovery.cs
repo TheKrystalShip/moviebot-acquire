@@ -102,6 +102,14 @@ public sealed record KeywordMatch
     public required string Name { get; init; }
 }
 
+/// <summary>One of the database's production companies, by the id a discovery filters by.</summary>
+public sealed record CompanyMatch
+{
+    public required int Id { get; init; }
+
+    public required string Name { get; init; }
+}
+
 /// <summary>A language as the database names it: the ISO 639-1 code and the English name.</summary>
 public sealed record LanguageName
 {
