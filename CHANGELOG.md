@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.45.0
+
+A description's trailers are the official ones alone, and no longer say whether they are official. A
+description no longer carries where a title streams, a discovery no longer filters by streaming
+service, and `TmdbOptions.WatchRegion` and `WatchProvidersAsync` are gone.
+
 ## 0.44.0
 
 A discovery and a chart are read a page at a time and say how many pages they have. A description

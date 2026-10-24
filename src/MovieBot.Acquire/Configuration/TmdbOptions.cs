@@ -28,16 +28,6 @@ public sealed class TmdbOptions
     /// </summary>
     public string Region { get; set; } = "US";
 
-    /// <summary>
-    /// The country whose streaming services are asked about, and where a title streams; empty for
-    /// <see cref="Region"/>. Certificates and streaming are separate because the shelves name
-    /// certificates by one country's ratings while the people watching stream in another.
-    /// </summary>
-    public string WatchRegion { get; set; } = "";
-
-    /// <summary>The country streaming is asked about: <see cref="WatchRegion"/>, else <see cref="Region"/>.</summary>
-    public string StreamingRegion => string.IsNullOrWhiteSpace(WatchRegion) ? Region : WatchRegion.Trim();
-
     public int TimeoutSeconds { get; set; } = 15;
 
     public bool IsConfigured => !string.IsNullOrWhiteSpace(ReadAccessToken);

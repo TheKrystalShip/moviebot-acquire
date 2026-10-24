@@ -89,9 +89,6 @@ public sealed record ShowDetails
     /// </summary>
     public IReadOnlyList<Trailer>? Trailers { get; init; }
 
-    /// <summary>Where it can be watched in the configured region; null when the database lists nothing there.</summary>
-    public WatchProviders? Providers { get; init; }
-
     /// <summary>The database's first page of recommendations, in its order.</summary>
     public IReadOnlyList<ListedTitle> Recommendations { get; init; } = [];
 

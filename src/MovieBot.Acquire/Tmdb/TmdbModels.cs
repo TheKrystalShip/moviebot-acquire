@@ -43,7 +43,6 @@ public sealed record TmdbTv
     [JsonPropertyName("recommendations")] public TmdbTitlePage? Recommendations { get; init; }
     [JsonPropertyName("reviews")] public TmdbReviews? Reviews { get; init; }
     [JsonPropertyName("images")] public TmdbImages? Images { get; init; }
-    [JsonPropertyName("watch/providers")] public TmdbWatchProviders? WatchProviders { get; init; }
 }
 
 /// <summary>A title's keywords: a film lists them under <c>keywords</c>, a show under <c>results</c>.</summary>
@@ -242,7 +241,6 @@ public sealed record TmdbMovie
     [JsonPropertyName("recommendations")] public TmdbTitlePage? Recommendations { get; init; }
     [JsonPropertyName("reviews")] public TmdbReviews? Reviews { get; init; }
     [JsonPropertyName("images")] public TmdbImages? Images { get; init; }
-    [JsonPropertyName("watch/providers")] public TmdbWatchProviders? WatchProviders { get; init; }
 }
 
 public sealed record TmdbVideos
@@ -291,44 +289,6 @@ public sealed record TmdbImage
     [JsonPropertyName("iso_639_1")] public string? Language { get; init; }
     [JsonPropertyName("vote_average")] public double? VoteAverage { get; init; }
     [JsonPropertyName("width")] public int? Width { get; init; }
-}
-
-/// <summary>Where a title streams, rents and sells, by region code.</summary>
-public sealed record TmdbWatchProviders
-{
-    [JsonPropertyName("results")] public Dictionary<string, TmdbRegionProviders>? Results { get; init; }
-}
-
-public sealed record TmdbRegionProviders
-{
-    [JsonPropertyName("link")] public string? Link { get; init; }
-    [JsonPropertyName("flatrate")] public IReadOnlyList<TmdbProvider>? Flatrate { get; init; }
-    [JsonPropertyName("rent")] public IReadOnlyList<TmdbProvider>? Rent { get; init; }
-    [JsonPropertyName("buy")] public IReadOnlyList<TmdbProvider>? Buy { get; init; }
-    [JsonPropertyName("free")] public IReadOnlyList<TmdbProvider>? Free { get; init; }
-    [JsonPropertyName("ads")] public IReadOnlyList<TmdbProvider>? Ads { get; init; }
-}
-
-public sealed record TmdbProvider
-{
-    [JsonPropertyName("provider_id")] public int Id { get; init; }
-    [JsonPropertyName("provider_name")] public string? Name { get; init; }
-    [JsonPropertyName("logo_path")] public string? LogoPath { get; init; }
-    [JsonPropertyName("display_priority")] public int? Priority { get; init; }
-}
-
-/// <summary>The providers the database lists for a region, with how it orders them there.</summary>
-public sealed record TmdbProviderList
-{
-    [JsonPropertyName("results")] public IReadOnlyList<TmdbListedProvider>? Results { get; init; }
-}
-
-public sealed record TmdbListedProvider
-{
-    [JsonPropertyName("provider_id")] public int Id { get; init; }
-    [JsonPropertyName("provider_name")] public string? Name { get; init; }
-    [JsonPropertyName("logo_path")] public string? LogoPath { get; init; }
-    [JsonPropertyName("display_priorities")] public Dictionary<string, int>? Priorities { get; init; }
 }
 
 /// <summary>A genre, a network or a person by name; <c>id</c> is the database's where it gives one.</summary>
@@ -397,6 +357,5 @@ public sealed record TmdbRelease
 [JsonSerializable(typeof(TmdbGenreList))]
 [JsonSerializable(typeof(TmdbPersonPage))]
 [JsonSerializable(typeof(TmdbNamedPage))]
-[JsonSerializable(typeof(TmdbProviderList))]
 [JsonSerializable(typeof(List<TmdbConfigLanguage>))]
 public partial class TmdbJsonContext : JsonSerializerContext;

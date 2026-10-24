@@ -41,7 +41,7 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
     public const int RecommendationsKept = 20;
 
     /// <summary>What a description asks for beside the title's own facts, in the same call.</summary>
-    private const string Extras = "videos,recommendations,reviews,images,watch/providers";
+    private const string Extras = "videos,recommendations,reviews,images";
 
     /// <summary>The languages the videos and logos of a description are asked in: the configured one, English, and none (speechless, textless).</summary>
     private static string ExtraLanguages(TmdbOptions settings)
@@ -447,7 +447,6 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
             BackdropPath = Image(tv.BackdropPath),
             KeywordTags = Tags(tv.Keywords),
             Trailers = Trailers(tv.Videos, settings),
-            Providers = ProvidersIn(tv.WatchProviders, settings.StreamingRegion),
             Recommendations = Recommended(tv.Recommendations, "show", tv.Id),
             Reviews = ReviewsOf(tv.Reviews),
             ReviewCount = tv.Reviews?.TotalResults ?? 0,
@@ -554,7 +553,6 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
             BackdropPath = Image(movie.BackdropPath),
             KeywordTags = Tags(movie.Keywords),
             Trailers = Trailers(movie.Videos, settings),
-            Providers = ProvidersIn(movie.WatchProviders, settings.StreamingRegion),
             Recommendations = Recommended(movie.Recommendations, "film", movie.Id),
             Reviews = ReviewsOf(movie.Reviews),
             ReviewCount = movie.Reviews?.TotalResults ?? 0,
@@ -565,16 +563,16 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
     }
 
     /// <summary>
-    /// The YouTube trailers and teasers, official before unofficial, a trailer before a teaser, the
-    /// configured language before the others, and the earliest published first among equals.
+    /// The YouTube trailers and teasers the rights holder published, a trailer before a teaser, the
+    /// configured language before the others, and the earliest published first among equals. One
+    /// the database does not mark official is left out: anybody can list a video there.
     /// </summary>
     private static List<Trailer> Trailers(TmdbVideos? videos, TmdbOptions settings)
     {
         var language = LanguageCode(settings);
         return (videos?.Results ?? [])
-            .Where(v => v.Site == "YouTube" && v.Type is "Trailer" or "Teaser" && !string.IsNullOrWhiteSpace(v.Key) && !string.IsNullOrWhiteSpace(v.Name))
-            .OrderByDescending(v => v.Official == true)
-            .ThenBy(v => v.Type == "Trailer" ? 0 : 1)
+            .Where(v => v.Site == "YouTube" && v.Official == true && v.Type is "Trailer" or "Teaser" && !string.IsNullOrWhiteSpace(v.Key) && !string.IsNullOrWhiteSpace(v.Name))
+            .OrderBy(v => v.Type == "Trailer" ? 0 : 1)
             .ThenBy(v => v.Language == language ? 0 : 1)
             .ThenBy(v => v.PublishedAt ?? "", StringComparer.Ordinal)
             .Take(TrailersKept)
@@ -583,37 +581,9 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
                 Key = v.Key!.Trim(),
                 Name = v.Name!.Trim(),
                 Kind = v.Type!,
-                Official = v.Official == true,
                 Language = string.IsNullOrEmpty(v.Language) ? null : v.Language,
             })
             .ToList();
-    }
-
-    /// <summary>Where a title is watched in <paramref name="region"/>, each way ordered as the database orders the providers there; null when the database lists nothing for it.</summary>
-    private static WatchProviders? ProvidersIn(TmdbWatchProviders? providers, string region)
-    {
-        if (providers?.Results is not { } regions
-            || regions.FirstOrDefault(r => string.Equals(r.Key, region, StringComparison.OrdinalIgnoreCase)) is not { Value: { } found }) return null;
-
-        static List<WatchProvider> Of(IReadOnlyList<TmdbProvider>? list) =>
-            (list ?? [])
-                .Where(p => p.Id > 0 && !string.IsNullOrWhiteSpace(p.Name))
-                .OrderBy(p => p.Priority ?? int.MaxValue)
-                .DistinctBy(p => p.Id)
-                .Select(p => new WatchProvider { ProviderId = p.Id, Name = p.Name!.Trim(), LogoPath = string.IsNullOrEmpty(p.LogoPath) ? null : p.LogoPath })
-                .ToList();
-
-        var result = new WatchProviders
-        {
-            Region = region.ToUpperInvariant(),
-            Link = string.IsNullOrWhiteSpace(found.Link) ? null : found.Link,
-            Flatrate = Of(found.Flatrate),
-            Rent = Of(found.Rent),
-            Buy = Of(found.Buy),
-            Free = Of(found.Free),
-            Ads = Of(found.Ads),
-        };
-        return result.All.Any() ? result : null;
     }
 
     /// <summary>The database's first page of recommendations, without the title itself.</summary>

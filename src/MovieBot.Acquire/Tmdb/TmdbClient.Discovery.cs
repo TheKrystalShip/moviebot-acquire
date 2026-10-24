@@ -77,28 +77,6 @@ public sealed partial class TmdbClient
             .ToList();
     }
 
-    /// <summary>
-    /// The streaming services the database lists for films (<c>film</c>) or shows (<c>show</c>) in the
-    /// configured region, in the order it shows them there; empty for any other kind. Throws
-    /// <see cref="HttpRequestException"/> when the database cannot be reached.
-    /// </summary>
-    public async Task<IReadOnlyList<WatchProvider>> WatchProvidersAsync(string kind, CancellationToken ct)
-    {
-        var settings = options.Value;
-        if (!settings.IsConfigured || Space(kind) is not { } space) return [];
-
-        var region = settings.StreamingRegion.ToUpperInvariant();
-        var answer = await GetAsync(
-            $"watch/providers/{space}?watch_region={Uri.EscapeDataString(region)}&language={Uri.EscapeDataString(settings.Language)}",
-            TmdbJsonContext.Default.TmdbProviderList, ct);
-        return (answer?.Results ?? [])
-            .Where(p => p.Id > 0 && !string.IsNullOrWhiteSpace(p.Name))
-            .OrderBy(p => p.Priorities is { } priorities && priorities.TryGetValue(region, out var at) ? at : int.MaxValue)
-            .DistinctBy(p => p.Id)
-            .Select(p => new WatchProvider { ProviderId = p.Id, Name = p.Name!.Trim(), LogoPath = string.IsNullOrEmpty(p.LogoPath) ? null : p.LogoPath })
-            .ToList();
-    }
-
     /// <summary>The languages the database names, by code and English name. Throws <see cref="HttpRequestException"/> when the database cannot be reached.</summary>
     public async Task<IReadOnlyList<LanguageName>> LanguagesAsync(CancellationToken ct)
     {
@@ -440,12 +418,6 @@ public sealed partial class TmdbClient
         if (!string.IsNullOrWhiteSpace(query.OriginCountry)) parameters["with_origin_country"] = query.OriginCountry.Trim();
         if (query.CompanyIds.Count > 0) parameters["with_companies"] = string.Join('|', query.CompanyIds);
         if (!film && query.NetworkIds.Count > 0) parameters["with_networks"] = string.Join('|', query.NetworkIds);
-        if (query.WatchProviderIds.Count > 0)
-        {
-            parameters["with_watch_providers"] = string.Join('|', query.WatchProviderIds);
-            parameters["watch_region"] = string.IsNullOrWhiteSpace(query.WatchRegion) ? region : query.WatchRegion.Trim();
-            parameters["with_watch_monetization_types"] = "flatrate|free|ads";
-        }
         if (query.From is { } from) parameters[dates + ".gte"] = Iso(from);
         if (query.To is { } to) parameters[dates + ".lte"] = Iso(to);
         if (query.MinRuntime is { } shortest) parameters["with_runtime.gte"] = shortest.ToString(CultureInfo.InvariantCulture);
