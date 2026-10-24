@@ -134,15 +134,16 @@ public sealed record TitleTraits
     public IReadOnlyList<int> People { get; init; } = [];
 }
 
-/// <summary>The sorts a discovery has.</summary>
+/// <summary>The sorts a discovery has. <see cref="LeastPopular"/> is the most looked at last.</summary>
 public static class DiscoverSorts
 {
     public const string Popular = "popular";
+    public const string LeastPopular = "least-popular";
     public const string Rating = "rating";
     public const string Newest = "newest";
     public const string Oldest = "oldest";
 
-    public static bool IsSort(string? sort) => sort is Popular or Rating or Newest or Oldest;
+    public static bool IsSort(string? sort) => sort is Popular or LeastPopular or Rating or Newest or Oldest;
 }
 
 /// <summary>What a discovery asks the database for. Every filter is optional and they combine.</summary>

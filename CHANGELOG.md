@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.49.0
+
+`DiscoverSorts.LeastPopular` (`least-popular`) asks a discovery for the least looked-at titles first.
+
 ## 0.48.0
 
 A `CatalogueTitle`, which a person's credits and a genre's list name, and a `TrendingTitle` carry

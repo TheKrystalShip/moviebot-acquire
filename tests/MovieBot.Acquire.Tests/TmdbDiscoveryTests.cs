@@ -284,6 +284,7 @@ public class TmdbDiscoveryTests
 
     [Theory]
     [InlineData(DiscoverSorts.Popular, "popularity.desc")]
+    [InlineData(DiscoverSorts.LeastPopular, "popularity.asc")]
     [InlineData(DiscoverSorts.Rating, "vote_count.desc")]
     [InlineData(DiscoverSorts.Newest, "primary_release_date.desc")]
     [InlineData(DiscoverSorts.Oldest, "primary_release_date.asc")]

@@ -409,6 +409,7 @@ public sealed partial class TmdbClient
             DiscoverSorts.Rating => "vote_count.desc",
             DiscoverSorts.Newest => dates + ".desc",
             DiscoverSorts.Oldest => dates + ".asc",
+            DiscoverSorts.LeastPopular => "popularity.asc",
             _ => "popularity.desc",
         };
 
