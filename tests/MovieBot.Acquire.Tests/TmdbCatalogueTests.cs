@@ -131,6 +131,24 @@ public class TmdbCatalogueTests
     }
 
     [Fact]
+    public async Task A_listed_title_carries_its_genres_and_the_language_it_was_made_in()
+    {
+        var titles = await Client(request =>
+        {
+            var path = request.RequestUri!.AbsolutePath;
+            if (path == "/3/discover/movie")
+                return Json("""{ "results": [ { "id": 1, "title": "Film 1", "vote_count": 500, "genre_ids": [ 878, 18 ], "original_language": "ko" }, { "id": 2, "title": "Film 2", "vote_count": 500 } ] }""");
+            var id = int.Parse(path.Split('/')[3]);
+            return Json($$"""{ "imdb_id": "tt{{id:0000000}}" }""");
+        }).GenreAsync("film", 878, 2, CancellationToken.None);
+
+        Assert.Equal([878, 18], titles[0].GenreIds);
+        Assert.Equal("ko", titles[0].OriginalLanguage);
+        Assert.Empty(titles[1].GenreIds);
+        Assert.Null(titles[1].OriginalLanguage);
+    }
+
+    [Fact]
     public async Task A_genre_of_shows_leaves_out_talk_news_and_reality()
     {
         string? asked = null;

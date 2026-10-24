@@ -197,6 +197,8 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
                 Rating = item.VoteCount is > 0 && item.VoteAverage is > 0 ? Math.Round(item.VoteAverage.Value, 1) : null,
                 Votes = item.VoteCount ?? 0,
                 PosterPath = string.IsNullOrEmpty(item.PosterPath) ? null : item.PosterPath,
+                GenreIds = [.. item.GenreIds ?? []],
+                OriginalLanguage = string.IsNullOrWhiteSpace(item.OriginalLanguage) ? null : item.OriginalLanguage.Trim(),
             });
         }
         return titles;
@@ -366,6 +368,8 @@ public sealed partial class TmdbClient(HttpClient http, IOptions<TmdbOptions> op
                     Votes = title.VoteCount ?? 0,
                     Overview = string.IsNullOrWhiteSpace(title.Overview) ? null : title.Overview.Trim(),
                     PosterPath = string.IsNullOrEmpty(title.PosterPath) ? null : title.PosterPath,
+                    GenreIds = [.. title.GenreIds ?? []],
+                    OriginalLanguage = string.IsNullOrWhiteSpace(title.OriginalLanguage) ? null : title.OriginalLanguage.Trim(),
                     Role = role,
                 };
             });

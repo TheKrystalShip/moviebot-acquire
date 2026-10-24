@@ -163,7 +163,7 @@ public class TmdbClientTests
     {
         const string Trending = """
             { "page": 1, "results": [
-              { "id": 949, "title": "Heat", "release_date": "1995-12-15", "vote_average": 7.945, "vote_count": 8740, "poster_path": "/heat.jpg" },
+              { "id": 949, "title": "Heat", "release_date": "1995-12-15", "vote_average": 7.945, "vote_count": 8740, "poster_path": "/heat.jpg", "genre_ids": [ 80, 18 ], "original_language": "en" },
               { "id": 5, "title": "Unlisted", "release_date": "2026-01-01" },
               { "id": 6, "title": "Grown-up", "adult": true },
               { "id": 7, "title": "Upcoming", "release_date": "", "vote_average": 0, "vote_count": 0, "poster_path": null }
@@ -189,6 +189,8 @@ public class TmdbClientTests
 
         var heat = films[0];
         Assert.Equal(("Heat", 1995, 7.9, 8740, "/heat.jpg"), (heat.Title, heat.Year, heat.Rating, heat.Votes, heat.PosterPath));
+        Assert.Equal([80, 18], heat.GenreIds);
+        Assert.Equal("en", heat.OriginalLanguage);
         var upcoming = films[1];
         Assert.Equal(((int?)null, (double?)null, (string?)null), (upcoming.Year, upcoming.Rating, upcoming.PosterPath));
     }

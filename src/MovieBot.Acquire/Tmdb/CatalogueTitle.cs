@@ -29,6 +29,12 @@ public sealed record CatalogueTitle
     /// <summary>The database's image path, for <see cref="TmdbClient.ImageAsync"/>.</summary>
     public string? PosterPath { get; init; }
 
+    /// <summary>The database's genres it is filed under, by id in its kind's list (<see cref="TmdbClient.GenresAsync"/>).</summary>
+    public IReadOnlyList<int> GenreIds { get; init; } = [];
+
+    /// <summary>The language it was made in, an ISO 639-1 code, when the database says.</summary>
+    public string? OriginalLanguage { get; init; }
+
     /// <summary>
     /// What a person did on it, among their credits: the part they played, the job they did, or both
     /// joined by a middle dot. Null in a genre's list, and for a part the credits do not name.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.48.0
+
+A `CatalogueTitle`, which a person's credits and a genre's list name, and a `TrendingTitle` carry
+`GenreIds`, the database's genres by id in the title's kind's list, and `OriginalLanguage`, as the
+database's lists already answer them.
+
 ## 0.47.0
 
 `SearchCompaniesAsync` finds the database's production companies by name, as `CompanyMatch`es in the
