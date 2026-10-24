@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.44.0
+
+A discovery and a chart are read a page at a time and say how many pages they have. A description
+carries trailers, the region's watch providers, recommendations, reviews, a logo, tagline, budget and
+revenue, and its keywords with their ids, all from the one details call; a discovery filters by
+streaming service and region. `TmdbOptions.WatchRegion` names the country streaming is asked about,
+`Region` when empty.
+
 ## 0.43.0
 
 `TorrentTags` names why a download is fetched for people's wants: `want:<imdbId>` marks a torrent the
