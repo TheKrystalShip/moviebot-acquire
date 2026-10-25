@@ -199,8 +199,8 @@ public sealed partial class TmdbClient
     }
 
     /// <summary>
-    /// The films of one series, the first released first; null when the database has no collection
-    /// under the id. Throws <see cref="HttpRequestException"/> when the database cannot be reached.
+    /// The films of one series, the first released first, leaving out any the database marks adult;
+    /// null when the database has no collection under the id. Throws <see cref="HttpRequestException"/> when the database cannot be reached.
     /// </summary>
     public async Task<TitleCollection?> CollectionAsync(int collectionId, CancellationToken ct)
     {
@@ -215,6 +215,7 @@ public sealed partial class TmdbClient
             TmdbId = answer.Id,
             Name = answer.Name.Trim(),
             Films = (answer.Parts ?? [])
+                .Where(p => p.Adult != true)
                 .Select(p => Listed(p, "film"))
                 .OfType<ListedTitle>()
                 .OrderBy(t => t.Released is null)

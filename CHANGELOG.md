@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.50.1
+
+`CollectionAsync` leaves out a series' films the database marks adult, as a person's credits do.
+
 ## 0.50.0
 
 A `TitleCard` carries a film's `RuntimeMinutes`, read from the same details call that names it, so a
