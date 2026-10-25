@@ -47,7 +47,7 @@ public sealed record ListedPage
 
 /// <summary>
 /// What names a title beyond a list's entry: its IMDb id, which everything else here leads by, the
-/// genres it is filed under, who made it and who stars in it. One call to the database per title.
+/// genres it is filed under, who made it, who stars in it and a film's length. One call to the database per title.
 /// </summary>
 public sealed record TitleCard
 {
@@ -78,4 +78,7 @@ public sealed record TitleCard
     public IReadOnlyList<string> Starring { get; init; } = [];
 
     public string? OriginalLanguage { get; init; }
+
+    /// <summary>A film's length in minutes, when the database times it; a show has none.</summary>
+    public int? RuntimeMinutes { get; init; }
 }

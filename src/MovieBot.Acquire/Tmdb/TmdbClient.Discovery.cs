@@ -323,7 +323,7 @@ public sealed partial class TmdbClient
     }
 
     /// <summary>
-    /// The IMDb id, genres, makers and top-billed actors of a title, in one call; null when the
+    /// The IMDb id, genres, makers, top-billed actors and a film's runtime of a title, in one call; null when the
     /// database has no such title. Throws <see cref="HttpRequestException"/> when the database cannot
     /// be reached.
     /// </summary>
@@ -349,6 +349,7 @@ public sealed partial class TmdbClient
                 MadeBy = Names((movie.Credits?.Crew ?? []).Where(c => string.Equals(c.Job, "Director", StringComparison.OrdinalIgnoreCase)).Select(c => c.Name)),
                 Starring = Names((movie.Credits?.Cast ?? []).OrderBy(c => c.Order ?? int.MaxValue).Select(c => c.Name).Take(2)),
                 OriginalLanguage = string.IsNullOrEmpty(movie.OriginalLanguage) ? null : movie.OriginalLanguage,
+                RuntimeMinutes = movie.Runtime is > 0 ? movie.Runtime : null,
             };
         }
 

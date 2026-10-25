@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.50.0
+
+A `TitleCard` carries a film's `RuntimeMinutes`, read from the same details call that names it, so a
+filter by length can be answered over titles the card already describes.
+
 ## 0.49.0
 
 `DiscoverSorts.LeastPopular` (`least-popular`) asks a discovery for the least looked-at titles first.
