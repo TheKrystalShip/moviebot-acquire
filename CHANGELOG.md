@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.51.0
+
+`TorrentTags.TellOf` and `ReadTellOf` write and read a promise of news to one person about one episode
+(`tell:s04e13:<account>`) or the film (`tell:film:<account>`), and `AcquisitionService.ResumeAsync`
+starts a stopped download again.
+
 ## 0.50.1
 
 `CollectionAsync` leaves out a series' films the database marks adult, as a person's credits do.

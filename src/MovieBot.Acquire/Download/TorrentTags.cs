@@ -77,6 +77,34 @@ public static partial class TorrentTags
     public const string Tell = "tell";
 
     /// <summary>
+    /// One person was promised news of one thing on this torrent, <c>tell:s04e13:usr_1</c> for an
+    /// episode and <c>tell:film:usr_1</c> for the film: they were in a room waiting on it when it
+    /// stopped arriving, and the room said they would be told. The account is escaped as a
+    /// <see cref="Requester"/> is. Removed once they have been told.
+    /// </summary>
+    public const string TellPrefix = "tell:";
+
+    private const string FilmCode = "film";
+
+    public static string TellOf(string accountId, EpisodeNumber? episode = null) =>
+        $"{TellPrefix}{(episode is { } e ? Code(e) : FilmCode)}:{Requester(accountId)[RequesterPrefix.Length..]}";
+
+    /// <summary>Reads a person's tell tag, or null when it is not one.</summary>
+    public static (string AccountId, EpisodeNumber? Episode)? ReadTellOf(string tag)
+    {
+        if (!tag.StartsWith(TellPrefix, StringComparison.Ordinal)) return null;
+
+        var rest = tag[TellPrefix.Length..];
+        var colon = rest.IndexOf(':', StringComparison.Ordinal);
+        if (colon <= 0 || colon == rest.Length - 1) return null;
+
+        var code = rest[..colon];
+        var account = ReadRequester(RequesterPrefix + rest[(colon + 1)..])!;
+        if (code == FilmCode) return (account, null);
+        return ReadEpisode(code) is { } episode ? (account, episode) : null;
+    }
+
+    /// <summary>
     /// The message showing this download's progress, as a channel and a message within it.
     ///
     /// Kept on the torrent like everything else, so a bot restarted during a download picks the

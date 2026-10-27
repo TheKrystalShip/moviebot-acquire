@@ -256,6 +256,10 @@ public sealed class AcquisitionService(
         return true;
     }
 
+    /// <summary>Sets a stopped download fetching again.</summary>
+    public Task ResumeAsync(string hash, CancellationToken ct) =>
+        torrents.StartAsync(hash, ct);
+
     /// <summary>Marks a note on a torrent as acted on, so it is not acted on twice.</summary>
     public Task ClearTagAsync(string hash, string tag, CancellationToken ct) =>
         torrents.RemoveTagAsync(hash, tag, ct);

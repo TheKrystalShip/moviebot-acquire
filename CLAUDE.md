@@ -351,6 +351,9 @@ persists it, so the state of that work is kept on the torrent rather than in any
 - **Why a show's file is fetched is a tag.** `watch:<room>:sXXeYY` is a room waiting on the episode,
   `keep:sXXeYY` any reason that outlasts a room, and `passed:sXXeYY` a room that moved past the
   episode, left for whoever knows whether the file can be let go of.
+- **A promise of news to one person is a tag.** `tell:sXXeYY:<account>` or `tell:film:<account>` is
+  somebody a waiting room told they would hear when it arrives; whoever tells them clears it, and
+  the file it names is not let go of while it stands.
 - **Fetching because people want a title is a tag.** `want:<imdbId>` marks a download the API started
   for the wants on a film or show with nobody in front of it; the count of what the prefetcher has
   arriving and the notice to every wanter read it.

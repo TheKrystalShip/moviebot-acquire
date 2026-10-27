@@ -147,6 +147,28 @@ public class TorrentTagsTests
         Assert.Equal(new EpisodeNumber(2, 11), TorrentTags.ReadPassed(tag));
     }
 
+    [Fact]
+    public void A_promise_of_an_episode_or_a_film_round_trips_its_person()
+    {
+        var episode = TorrentTags.TellOf("usr_1", new EpisodeNumber(4, 13));
+        var film = TorrentTags.TellOf("a,b:c%");
+
+        Assert.Equal("tell:s04e13:usr_1", episode);
+        Assert.Equal(("usr_1", (EpisodeNumber?)new EpisodeNumber(4, 13)), TorrentTags.ReadTellOf(episode));
+        Assert.Equal("tell:film:a%2Cb:c%25", film);
+        Assert.Equal(("a,b:c%", (EpisodeNumber?)null), TorrentTags.ReadTellOf(film));
+    }
+
+    [Theory]
+    [InlineData("tell")]
+    [InlineData("tell:")]
+    [InlineData("tell:s04e13")]
+    [InlineData("tell:s04e13:")]
+    [InlineData("tell:season:usr_1")]
+    [InlineData("requester:usr_1")]
+    public void Anything_but_a_promise_reads_as_none(string tag) =>
+        Assert.Null(TorrentTags.ReadTellOf(tag));
+
     [Theory]
     [InlineData("passed:")]
     [InlineData("passed:s02")]
